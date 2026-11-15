@@ -486,10 +486,15 @@ comment on table public.platform_settings is 'Platform-wide settings (welcome bo
 -- 14. FIRST ADMIN ACCOUNT
 -- email:    admin@xenabroker.com
 -- password: admin123   <-- CHANGE THIS before going live
+-- The upsert REPLACES any existing hash for this email, so the
+-- password below always works after running this script.
 -- ============================================================
 insert into public.admin_users (email, password_hash)
 values ('admin@xenabroker.com', crypt('admin123', gen_salt('bf')))
-on conflict (email) do nothing;
+on conflict (email) do update set password_hash = excluded.password_hash;
+
+-- Make PostgREST pick up the new RPCs immediately
+notify pgrst, 'reload schema';
 
 -- ============================================================
 -- 15. VERIFY (last result set is shown by the SQL editor)
