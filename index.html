@@ -15,10 +15,66 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
+    <style>
+      html, body { margin: 0; background: #F8FAFC; }
+      #startup-error {
+        display: none;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        color: #fecdd3;
+        background: #0f172a;
+        padding: 20px;
+        margin: 24px auto;
+        max-width: 900px;
+        border-radius: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      #startup-error b { color: #fff; font-family: system-ui, sans-serif; font-size: 14px; }
+    </style>
   </head>
   <body class="bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-blue-100 selection:text-blue-900">
     <div id="root"></div>
+
+    <!-- Surfaces startup/JS errors instead of showing a blank white page -->
+    <script>
+      (function () {
+        function show(title, detail) {
+          try {
+            var root = document.getElementById('root');
+            var pre = document.getElementById('startup-error');
+            if (!pre) {
+              pre = document.createElement('pre');
+              pre.id = 'startup-error';
+              document.body.appendChild(pre);
+            }
+            pre.style.display = 'block';
+            pre.innerHTML =
+              '<b>' + title + '</b>\n\n' + String(detail || 'Unknown error').replace(/</g, '&lt;');
+            if (root) root.style.display = 'none';
+          } catch (e) {}
+        }
+
+        window.addEventListener('error', function (event) {
+          if (event && (event.message || event.error)) {
+            show(
+              'Xena Broker failed to start',
+              (event.error && event.error.stack) || event.message
+            );
+          }
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event && event.reason;
+          show(
+            'Xena Broker hit an unhandled error',
+            (reason && reason.stack) || reason
+          );
+        });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

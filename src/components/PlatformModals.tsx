@@ -22,14 +22,36 @@ interface PlatformModalsProps {
   onNavigate: (page: import('../types/broker').PageId) => void;
 }
 
-const WHEEL_PRIZES = [
-  { label: '$25', amount: 25, color: '#3B82F6' },
-  { label: '$100', amount: 100, color: '#10B981' },
-  { label: '$10', amount: 10, color: '#64748B' },
-  { label: '$250', amount: 250, color: '#8B5CF6' },
-  { label: '$50', amount: 50, color: '#06B6D4' },
-  { label: '$500', amount: 500, color: '#0891B2' },
-] as const;
+interface WheelPrize {
+  label: string;
+  amount: number;
+  /** Relative chance of landing on this segment. */
+  weight: number;
+  fill: string;
+  text: string;
+}
+
+// Muted institutional palette: deep navy / slate with two gold top prizes.
+const WHEEL_PRIZES: WheelPrize[] = [
+  { label: '$25', amount: 25, weight: 24, fill: '#16293E', text: '#E6EDF5' },
+  { label: '$500', amount: 500, weight: 2, fill: '#B9922F', text: '#0E1E2E' },
+  { label: '$50', amount: 50, weight: 20, fill: '#1E3A52', text: '#E6EDF5' },
+  { label: '$150', amount: 150, weight: 8, fill: '#16293E', text: '#E6EDF5' },
+  { label: '$10', amount: 10, weight: 26, fill: '#1E3A52', text: '#E6EDF5' },
+  { label: '$250', amount: 250, weight: 4, fill: '#B9922F', text: '#0E1E2E' },
+  { label: '$75', amount: 75, weight: 12, fill: '#16293E', text: '#E6EDF5' },
+  { label: '$100', amount: 100, weight: 9, fill: '#1E3A52', text: '#E6EDF5' },
+];
+
+function pickPrizeIndex(): number {
+  const total = WHEEL_PRIZES.reduce((sum, prize) => sum + prize.weight, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < WHEEL_PRIZES.length; i += 1) {
+    roll -= WHEEL_PRIZES[i].weight;
+    if (roll <= 0) return i;
+  }
+  return 0;
+}
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -91,7 +113,7 @@ export default function PlatformModals({
 
   const handleSpinWheel = () => {
     if (isSpinning || spinPrize !== null) return;
-    const chosenIdx = Math.floor(Math.random() * WHEEL_PRIZES.length);
+    const chosenIdx = pickPrizeIndex();
     const segmentAngle = 360 / WHEEL_PRIZES.length;
     const centerOfWedge = chosenIdx * segmentAngle + segmentAngle / 2;
     const targetRotation = 360 * 5 + (360 - centerOfWedge);
@@ -103,7 +125,7 @@ export default function PlatformModals({
       const won = WHEEL_PRIZES[chosenIdx].amount;
       setIsSpinning(false);
       setSpinPrize(won);
-      onCreditBonus(won, `Daily Spin Reward (${formatCurrency(won, 0)})`, 'XN-DAILYSPIN');
+      onCreditBonus(won, `Daily Reward Draw (${formatCurrency(won, 0)})`, 'XN-DAILYSPIN');
     }, 3250);
   };
 
@@ -205,35 +227,57 @@ export default function PlatformModals({
       {/* 2. About the Platform Overview Modal */}
       {activeModal === 'platform_info' && (
         <div className="animate-modal-pop w-full max-w-lg overflow-hidden rounded-3xl bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-[var(--modal-shadow)]">
-          <div className="relative h-44 sm:h-48 overflow-hidden bg-[var-modal-header-bg]">
-            {!imgError ? (
-              <img
-                src={tradingDeskImg}
-                alt="Xena Broker dual-monitor equities trading workstation"
-                referrerPolicy="no-referrer"
-                onError={() => setImgError(true)}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[var-modal-header-bg]">
-                <TrendingUp className="w-12 h-12 text-[var(--modal-icon)]/60" />
-              </div>
-            )}
+          <div className="relative h-40 sm:h-44 overflow-hidden bg-[#0E1E2E]">
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-t from-[var(--modal-header-bg)]/90 via-[var(--modal-header-bg)]/35 to-transparent"
+              className="absolute inset-0 opacity-[0.16]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px)',
+                backgroundSize: '36px 36px',
+              }}
+            />
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 400 160"
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full opacity-80"
+            >
+              <defs>
+                <linearGradient id="xn-platform-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10B981" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0 124 L40 110 L80 118 L120 94 L160 100 L200 76 L240 84 L280 60 L320 68 L360 42 L400 50 L400 160 L0 160 Z"
+                fill="url(#xn-platform-area)"
+              />
+              <path
+                d="M0 124 L40 110 L80 118 L120 94 L160 100 L200 76 L240 84 L280 60 L320 68 L360 42 L400 50"
+                fill="none"
+                stroke="#10B981"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-[#0E1E2E] via-[#0E1E2E]/55 to-transparent"
             />
             <button
               type="button"
               onClick={onClose}
               aria-label="Close platform overview"
-              className="absolute top-3.5 right-3.5 p-1.5 rounded-xl text-[var(--modal-text)] bg-[var(--modal-button-bg)] hover:bg-[var(--modal-button-bg-hover)] transition-colors cursor-pointer"
+              className="absolute top-3.5 right-3.5 p-1.5 rounded-xl text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="absolute bottom-4 left-5 right-5 text-[var(--modal-text)]">
-              <div className="text-xs font-semibold text-[var(--modal-accent)]">About the Platform</div>
-              <h2 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight">
+            <div className="absolute bottom-4 left-5 right-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7DD3C0]">
+                About the platform
+              </div>
+              <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
                 Built for focused US equities trading
               </h2>
             </div>
@@ -302,89 +346,121 @@ export default function PlatformModals({
         </div>
       )}
 
-      {/* 3. Daily Spin Wheel Modal (Auto-shown once every 24 hours) */}
+      {/* 3. Daily Reward Draw — member-only, once every 24 hours */}
       {activeModal === 'daily_spin' && (
         <div className="animate-modal-pop w-full max-w-md overflow-hidden rounded-3xl bg-[var(--modal-bg)] border border-[var(--modal-border)] shadow-[var(--modal-shadow)]">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[var(--modal-header-bg)] via-[var(--modal-header-bg2)] to-[var(--modal-accent)] text-[var(--modal-header-fg)] px-6 py-5">
+          <div className="relative overflow-hidden bg-[#0E1E2E] px-6 pt-5 pb-5 text-white">
             <button
               type="button"
               onClick={() => {
                 if (!isSpinning) onClose();
               }}
-              aria-label="Close daily spin"
+              aria-label="Close daily reward draw"
               disabled={isSpinning}
-              className="absolute top-4 right-4 p-1.5 rounded-xl text-[var(--modal-text)] hover:text-[var(--modal-text-hover)] disabled:opacity-40 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-white/70 hover:text-white bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="text-xs font-semibold text-[var(--modal-accent)]">24-Hour Member Reward</div>
-            <h2 className="font-display text-xl font-extrabold text-[var(--modal-header-fg)] tracking-tight">
-              Daily Cash Spin
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C9A227]">
+              Member reward
+            </div>
+            <h2 className="font-display text-lg font-bold tracking-tight text-white">
+              Daily Reward Draw
             </h2>
-            <p className="text-xs text-[var(--modal-body)] mt-1">
-              Spin once every 24 hours to win up to $500.00 in brokerage buying power.
+            <p className="text-xs text-white/60 mt-1 leading-relaxed">
+              One draw every 24 hours. Rewards are credited to your buying power, up to $500.
             </p>
+            <div
+              aria-hidden="true"
+              className="mt-4 h-px w-full bg-gradient-to-r from-[#C9A227]/60 via-[#C9A227]/15 to-transparent"
+            />
           </div>
 
           <div className="p-6 flex flex-col items-center">
-            {/* Pointer + Wheel */}
-            <div className="relative w-60 h-60 sm:w-64 sm:h-64 flex items-center justify-center">
-              {/* Top Pointer */}
+            {/* Rim, pointer and rotating wheel */}
+            <div className="relative w-64 h-64 flex items-center justify-center">
+              {/* Slim gold pointer */}
               <div
                 aria-hidden="true"
-                className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[18px] border-l-transparent border-r-transparent border-t-[var(--modal-accent)] drop-shadow-sm"
+                className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center"
+              >
+                <div className="h-2.5 w-px bg-[#C9A227]/70" />
+                <div className="w-0 h-0 border-l-[7px] border-r-[7px] border-t-[13px] border-l-transparent border-r-transparent border-t-[#C9A227] drop-shadow-[0_2px_4px_rgba(2,10,20,0.35)]" />
+              </div>
+
+              {/* Bezel */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full border border-[var(--modal-border)] bg-[var(--modal-wheel-bg)] shadow-[0_20px_45px_-24px_rgba(2,10,20,0.65)]"
               />
 
-              {/* Rotating Wheel SVG */}
+              {/* Rotating wheel */}
               <div
-                className="w-full h-full rounded-full p-1.5 bg-[var(--modal-wheel-bg)] shadow-lg"
+                className="relative w-[92%] h-[92%] rounded-full"
                 style={{
                   transform: `rotate(${wheelRotation}deg)`,
                   transition: isSpinning
-                    ? 'transform 3.2s cubic-bezier(0.12, 0.85, 0.18, 1)'
+                    ? 'transform 3.2s cubic-bezier(0.15, 0.85, 0.16, 1)'
                     : 'none',
                 }}
               >
-                <svg viewBox="0 0 220 220" className="w-full h-full rounded-full">
-                  {WHEEL_PRIZES.map((seg, i) => {
+                <svg viewBox="0 0 240 240" className="w-full h-full">
+                  {WHEEL_PRIZES.map((prize, i) => {
                     const segAngle = 360 / WHEEL_PRIZES.length;
                     const startAngle = i * segAngle;
                     const endAngle = startAngle + segAngle;
                     const midAngle = startAngle + segAngle / 2;
-                    const labelPos = polarToCartesian(110, 110, 68, midAngle);
+                    const labelPos = polarToCartesian(120, 120, 78, midAngle);
 
                     return (
-                      <g key={seg.label}>
+                      <g key={`${prize.label}-${i}`}>
                         <path
-                          d={buildWedgePath(110, 110, 108, startAngle, endAngle)}
-                          fill={seg.color}
-                          stroke="#FFFFFF"
-                          strokeWidth="2"
+                          d={buildWedgePath(120, 120, 116, startAngle, endAngle)}
+                          fill={prize.fill}
+                          stroke="rgba(248,250,252,0.14)"
+                          strokeWidth="1"
                         />
                         <text
                           x={labelPos.x}
                           y={labelPos.y}
-                          fill="#FFFFFF"
-                          fontSize="14"
-                          fontWeight="800"
-                          fontFamily="JetBrains Mono, monospace"
+                          fill={prize.text}
+                          fontSize="12"
+                          fontWeight="600"
+                          letterSpacing="0.5"
+                          fontFamily="JetBrains Mono, ui-monospace, monospace"
                           textAnchor="middle"
                           dominantBaseline="middle"
                           transform={`rotate(${midAngle}, ${labelPos.x}, ${labelPos.y})`}
                         >
-                          {seg.label}
+                          {prize.label}
                         </text>
                       </g>
                     );
                   })}
-                  <circle cx="110" cy="110" r="22" fill="#0F172A" stroke="#FFFFFF" strokeWidth="3" />
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r="115"
+                    fill="none"
+                    stroke="rgba(201,162,39,0.45)"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r="27"
+                    fill="#0B1A2A"
+                    stroke="rgba(201,162,39,0.55)"
+                    strokeWidth="1.5"
+                  />
                   <text
-                    x="110"
-                    y="111"
-                    fill="#FFFFFF"
-                    fontSize="9"
+                    x="120"
+                    y="120.5"
+                    fill="#C9A227"
+                    fontSize="8"
                     fontWeight="700"
+                    letterSpacing="1.6"
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >
@@ -395,43 +471,48 @@ export default function PlatformModals({
             </div>
 
             {spinPrize !== null ? (
-              <div className="w-full mt-5 space-y-3 text-center">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[var(--modal-success-bg)] to-[var(--modal-success-bg2)] border border-[var(--modal-success-border)] text-[var(--modal-success-fg)]">
-                  <div className="text-xs font-semibold text-[var(--modal-success-fg)]">Reward Credited</div>
-                  <div className="font-mono tabular-nums text-2xl font-extrabold text-[var(--modal-success-fg)] mt-0.5">
+              <div className="w-full mt-6 space-y-3 text-center">
+                <div className="p-4 rounded-2xl bg-[var(--modal-card-bg)] border border-[var(--modal-card-border)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--modal-card-fg)]">
+                    Reward credited
+                  </div>
+                  <div className="font-mono tabular-nums text-2xl font-semibold text-[#0E7C66] mt-1">
                     +{formatCurrency(spinPrize)}
                   </div>
-                  <div className="text-xs text-[var(--modal-body)] mt-1">
-                    Added to your Cash Balance · Next spin available in 24 hours.
+                  <div className="text-xs text-[var(--modal-card-fg)] mt-1">
+                    Added to your cash balance. Next draw available in 24 hours.
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-full py-3 px-4 text-sm font-semibold text-[var-modal-button-fg] bg-gradient-to-r from-[var(--modal-button-bg1)] via-[var(--modal-button-bg2)] to-[var(--modal-button-bg3)] rounded-xl shadow-sm hover:from-[var(--modal-button-bg1-hover)] hover:via-[var(--modal-button-bg2-hover)] hover:to-[var(--modal-button-bg3-hover)] transition-all cursor-pointer"
+                  className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#0E7C66] hover:bg-[#0B6353] rounded-xl transition-colors cursor-pointer"
                 >
                   Done
                 </button>
               </div>
             ) : (
-              <div className="w-full mt-5 space-y-2.5">
+              <div className="w-full mt-6 space-y-2.5">
                 <button
                   type="button"
                   onClick={handleSpinWheel}
                   disabled={isSpinning}
-                  className="w-full py-3 px-4 text-sm font-semibold text-[var(--modal-button-fg)] bg-gradient-to-r from-[var(--modal-button-bg1)] via-[var(--modal-button-bg2)] to-[var(--modal-button-bg3)] rounded-xl shadow-sm hover:from-[var(--modal-button-bg1-hover)] hover:via-[var(--modal-button-bg2-hover)] hover:to-[var(--modal-button-bg3-hover)] disabled:opacity-60 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 px-4 text-sm font-semibold text-white bg-[#0E7C66] hover:bg-[#0B6353] rounded-xl disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <RotateCw className={`w-4 h-4 ${isSpinning ? 'animate-spin' : ''}`} />
-                  <span>{isSpinning ? 'Spinning...' : 'Spin Now'}</span>
+                  <span>{isSpinning ? 'Drawing…' : 'Start draw'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isSpinning}
-                  className="w-full py-2.5 px-4 text-xs sm:text-sm font-medium text-[var(--modal-button-alt)] bg-gradient-to-r from-[var(--modal-button-alt-bg1)] to-[var(--modal-button-alt-bg2)]/80 rounded-xl hover:from-[var(--modal-button-alt-bg1-hover)] hover:to-[var(--modal-button-alt-bg2-hover)] transition-all cursor-pointer disabled:opacity-40"
+                  className="w-full py-2.5 px-4 text-xs sm:text-sm font-medium text-[var(--modal-button-alt)] hover:text-[var(--modal-text-hover)] rounded-xl transition-colors cursor-pointer disabled:opacity-40"
                 >
-                  Skip for today
+                  Not now
                 </button>
+                <p className="pt-1 text-[10px] leading-relaxed text-[var(--modal-body)] text-center opacity-70">
+                  Promotional credits only. Not withdrawable and carry no cash value.
+                </p>
               </div>
             )}
           </div>

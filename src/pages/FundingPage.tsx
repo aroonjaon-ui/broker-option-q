@@ -80,7 +80,7 @@ export default function FundingPage({
       if (ledgerFilter === 'trades') {
         return entry.type === 'trade_buy' || entry.type === 'trade_sell';
       }
-      return True;
+      return true;
     });
   }, [ledger, ledgerFilter]);
 

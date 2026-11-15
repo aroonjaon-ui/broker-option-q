@@ -143,6 +143,7 @@ function loadSavedCredentials(): StoredCredential[] {
         email: 'alex.mercer@xenabroker.com',
         accountNumber: 'XN-482910',
         createdAt: new Date().toISOString(),
+        hasCompletedProfile: true,
       },
       password: 'password123',
     },
@@ -350,25 +351,28 @@ export default function App() {
     setModalQueue((prev) => prev.slice(1));
   }, []);
 
-  // Show Daily Spin once every 24 hours (and Platform Overview once on initial visit)
+  // Platform Overview is shown once on the first visit.
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const toQueue: AppModalKind[] = [];
-      if (isDailySpinDue()) {
-        markDailySpinShown();
-        toQueue.push('daily_spin');
-      }
       if (!hasSeenPlatformInfo()) {
         markPlatformInfoSeen();
-        toQueue.push('platform_info');
-      }
-      if (toQueue.length > 0) {
-        enqueueModals(toQueue);
+        enqueueModals(['platform_info']);
       }
     }, 1100);
 
     return () => window.clearTimeout(timer);
   }, [enqueueModals]);
+
+  // The Daily Reward Draw is a member reward: it never appears for visitors who
+  // are not signed in, and it waits until the profile step is finished.
+  const spinShownRef = useRef(false);
+  useEffect(() => {
+    if (!user || activePage === 'complete-profile' || activePage === 'admin') return;
+    if (spinShownRef.current || !isDailySpinDue()) return;
+    spinShownRef.current = true;
+    markDailySpinShown();
+    enqueueModals(['daily_spin']);
+  }, [user, activePage, enqueueModals]);
 
   useEffect(() => {
     try {
@@ -570,11 +574,7 @@ export default function App() {
       navigateTo('complete-profile');
 
       markPlatformInfoSeen();
-      const postSignupModals: AppModalKind[] = ['signup_bonus', 'platform_info'];
-      if (isDailySpinDue()) {
-        markDailySpinShown();
-        postSignupModals.push('daily_spin');
-      }
+      const postSignupModals: AppModalKind[] = ['signup_bonus'];
       enqueueModals(postSignupModals);
 
       return { ok: true };
