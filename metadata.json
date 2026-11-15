@@ -1,0 +1,6 @@
+{
+  "name": "Xena Broker",
+  "description": "Professional stock trading, portfolio management, and order execution brokerage platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
