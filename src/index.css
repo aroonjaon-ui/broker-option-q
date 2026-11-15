@@ -1,8 +1,156 @@
 /* ==========================================
-   Xena Broker - Premium Design System
+   Xena Broker - Design System
    ========================================== */
 
 @import "tailwindcss";
+
+/* ==========================================
+   Light Mode Variables
+   ========================================== */
+
+:root {
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --muted: #64748B;
+  --muted-foreground: #94A3B8;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #10B981;
+  --secondary-foreground: #FFFFFF;
+  --accent: #8B5CF6;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #CBD5E1;
+  --input: #E2E8F0;
+  --ring: #3B82F6;
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  --success-bg: #ECFDF3;
+  --success-border: #10B981;
+  --destructive-bg: #FEE2E2;
+  --destructive-border: #EF4444;
+  --subtle: #F1F5F9;
+  --subtle-foreground: #0F172A;
+  --chart-bg: #131722;
+  --chart-border: #334155;
+  --chart-shadow: rgba(0, 0, 0, 0.3);
+  --nav-bg: #FFFFFF;
+  --nav-blur: 12px;
+  --nav-border: #E2E8F0;
+  --nav-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --modal-bg: #FFFFFF;
+  --modal-border: #E5E7EB;
+  --modal-shadow: rgba(0, 0, 0, 0.1);
+  --modal-accent: #3B82F6;
+  --modal-text: #0F172A;
+  --modal-body: #64748B;
+  --modal-success-bg: #ECFDF3;
+  --modal-success-fg: #10B981;
+  --modal-destructive-bg: #FEE2E2;
+  --modal-destructive-fg: #EF4444;
+  --modal-card-bg: #FAFAFA;
+  --modal-card-accent: #3B82F6;
+  --modal-card-fg: #0F172A;
+  --modal-card-fg2: #64748B;
+  --modal-button-bg1: #3B82F6;
+  --modal-button-bg2: #8B5CF6;
+  --modal-button-bg3: #A78BF;
+  --modal-button-bg1-hover: #2563EB;
+  --modal-button-bg2-hover: #7C3AED;
+  --modal-button-bg3-hover: #9F7AFF;
+  --modal-button-alt-bg1: #F3F4F6;
+  --modal-button-alt-bg2: #E5E7EB;
+  --modal-button-alt-bg1-hover: #D1D5DB;
+  --modal-button-alt-bg2-hover: #9CA3AF;
+  --funding-gradient-start: #070D19;
+  --funding-gradient-mid: #0F1E3D;
+  --funding-gradient-end: #1D4ED8;
+}
+
+/* Dark Mode Variables */
+.dark {
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --muted: #94A3B8;
+  --muted-foreground: #CBD5E1;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  --primary: #60A5FA;
+  --primary-foreground: #0F172A;
+  --primary-dark: #3B82F6;
+  --primary-light: #93C5FD;
+  --secondary: #34D399;
+  --secondary-foreground: #0F172A;
+  --secondary-light: #67E8F9;
+  --accent: #A78BF;
+  --accent-foreground: #0F172A;
+  --destructive: #F87171;
+  --destructive-foreground: #FFFFFF;
+  --border: #334155;
+  --input: #334155;
+  --success: #34D399;
+  --success-foreground: #0F172A;
+  --success-bg: #052E21;
+  --success-border: #34D399;
+  --destructive-bg: #F87171;
+  --destructive-border: #F87171;
+  --subtle: #1E293B;
+  --subtle-foreground: #F8FAFC;
+  --chart-bg: #131722;
+  --chart-border: #334155;
+  --chart-shadow: rgba(0, 0, 0, 0.5);
+  --nav-bg: #0F172A;
+  --nav-blur: 12px;
+  --nav-border: #334155;
+  --nav-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --modal-bg: #1E293B;
+  --modal-border: #334155;
+  --modal-shadow: rgba(0, 0, 0, 0.3);
+  --modal-accent: #60A5FA;
+  --modal-text: #F8FAFC;
+  --modal-body: #94A3B8;
+  --modal-success-bg: #052E21;
+  --modal-success-fg: #34D399;
+  --modal-destructive-bg: #991B1B;
+  --modal-destructive-fg: #F87171;
+  --modal-card-bg: #1E293B;
+  --modal-card-accent: #60A5FA;
+  --modal-card-fg: #F8FAFC;
+  --modal-card-fg2: #94A3B8;
+  --modal-button-bg1: #60A5FA;
+  --modal-button-bg2: #A78BF;
+  --modal-button-bg3: #C084FF;
+  --modal-button-bg1-hover: #3B82F6;
+  --modal-button-bg2-hover: #8B5CF6;
+  --modal-button-bg3-hover: #A78BF;
+  --modal-button-alt-bg1: #3F3F3F;
+  --modal-button-alt-bg2: #2F2F2F;
+  --modal-button-alt-bg1-hover: #3A3A3A;
+  --modal-button-alt-bg2-hover: #2A2A2A;
+  --funding-gradient-start: #0F172A;
+  --funding-gradient-mid: #1E293B;
+  --funding-gradient-end: #334155;
+}
+
+/* ==========================================
+   Base Reset
+   ========================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
 
 /* ==========================================
    Typography System
@@ -62,171 +210,6 @@
       transition-duration: 0.01ms !important;
     }
   }
-}
-
-/* ==========================================
-   Color System - Unified Palette with Dark Mode
-   ========================================== */
-
-:root {
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --muted: #64748B;
-  --muted-foreground: #94A3B8;
-
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-
-  --primary: #3B82F6;
-  --primary-foreground: #FFFFFF;
-  --primary-dark: #2563EB;
-  --primary-light: #60A5FA;
-
-  --secondary: #10B981;
-  --secondary-foreground: #FFFFFF;
-  --secondary-light: #34D399;
-
-  --accent: #8B5CF6;
-  --accent-foreground: #FFFFFF;
-
-  --destructive: #EF4444;
-  --destructive-foreground: #FFFFFF;
-
-  --border: #CBD5E1;
-  --input: #E2E8F0;
-  --ring: #3B82F6;
-
-  --success: #10B981;
-  --success-foreground: #FFFFFF;
-  --success-bg: #ECFDF3;
-  --success-border: #10B981;
-
-  --destructive-bg: #FEE2E2;
-  --destructive-border: #EF4444;
-
-  --subtle: #F1F5F9;
-  --subtle-foreground: #0F172A;
-
-  --chart-bg: #131722;
-  --chart-border: #334155;
-  --chart-shadow: rgba(0, 0, 0, 0.3);
-
-  --nav-bg: #FFFFFF;
-  --nav-blur: 12px;
-  --nav-border: #E2E8F0;
-  --nav-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-
-  --modal-bg: #FFFFFF;
-  --modal-border: #E5E7EB;
-  --modal-shadow: rgba(0, 0, 0, 0.1);
-  --modal-accent: #3B82F6;
-  --modal-text: #0F172A;
-  --modal-body: #64748B;
-  --modal-success-bg: #ECFDF3;
-  --modal-success-fg: #10B981;
-  --modal-destructive-bg: #FEE2E2;
-  --modal-destructive-fg: #EF4444;
-  --modal-card-bg: #FAFAFA;
-  --modal-card-accent: #3B82F6;
-  --modal-card-fg: #0F172A;
-  --modal-card-fg2: #64748B;
-  --modal-button-bg1: #3B82F6;
-  --modal-button-bg2: #8B5CF6;
-  --modal-button-bg3: #A78BF;
-  --modal-button-bg1-hover: #2563EB;
-  --modal-button-bg2-hover: #7C3AED;
-  --modal-button-bg3-hover: #9F7AFF;
-  --modal-button-alt-bg1: #F3F4F6;
-  --modal-button-alt-bg2: #E5E7EB;
-  --modal-button-alt-bg1-hover: #D1D5DB;
-  --modal-button-alt-bg2-hover: #9CA3AF;
-
-  --funding-gradient-start: #070D19;
-  --funding-gradient-mid: #0F1E3D;
-  --funding-gradient-end: #1D4ED8;
-}
-
-.dark {
-  --background: #0F172A;
-  --foreground: #F8FAFC;
-  --muted: #94A3B8;
-  --muted-foreground: #CBD5E1;
-
-  --card: #1E293B;
-  --card-foreground: #F8FAFC;
-
-  --popover: #1E293B;
-  --popover-foreground: #F8FAFC;
-
-  --primary: #60A5FA;
-  --primary-foreground: #0F172A;
-  --primary-dark: #3B82F6;
-  --primary-light: #93C5FD;
-
-  --secondary: #34D399;
-  --secondary-foreground: #0F172A;
-  --secondary-light: #67E8F9;
-
-  --accent: #A78BF;
-  --accent-foreground: #0F172A;
-
-  --destructive: #F87171;
-  --destructive-foreground: #FFFFFF;
-
-  --border: #334155;
-  --input: #334155;
-
-  --success: #34D399;
-  --success-foreground: #0F172A;
-  --success-bg: #052E21;
-  --success-border: #34D399;
-
-  --destructive-bg: #F87171;
-  --destructive-border: #F87171;
-
-  --subtle: #1E293B;
-  --subtle-foreground: #F8FAFC;
-
-  --chart-bg: #131722;
-  --chart-border: #334155;
-  --chart-shadow: rgba(0, 0, 0, 0.5);
-
-  --nav-bg: #0F172A;
-  --nav-blur: 12px;
-  --nav-border: #334155;
-  --nav-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-
-  --modal-bg: #1E293B;
-  --modal-border: #334155;
-  --modal-shadow: rgba(0, 0, 0, 0.3);
-  --modal-accent: #60A5FA;
-  --modal-text: #F8FAFC;
-  --modal-body: #94A3B8;
-  --modal-success-bg: #052E21;
-  --modal-success-fg: #34D399;
-  --modal-destructive-bg: #991B1B;
-  --modal-destructive-fg: #F87171;
-  --modal-card-bg: #1E293B;
-  --modal-card-accent: #60A5FA;
-  --modal-card-fg: #F8FAFC;
-  --modal-card-fg2: #94A3B8;
-  --modal-button-bg1: #60A5FA;
-  --modal-button-bg2: #A78BF;
-  --modal-button-bg3: #C084FF;
-  --modal-button-bg1-hover: #3B82F6;
-  --modal-button-bg2-hover: #8B5CF6;
-  --modal-button-bg3-hover: #A78BF;
-  --modal-button-alt-bg1: #3F3F3F;
-  --modal-button-alt-bg2: #2F2F2F;
-  --modal-button-alt-bg1-hover: #3A3A3A;
-  --modal-button-alt-bg2-hover: #2A2A2A;
-
-  --funding-gradient-start: #0F172A;
-  --funding-gradient-mid: #1E293B;
-  --funding-gradient-end: #334155;
 }
 
 /* ==========================================
@@ -370,14 +353,14 @@
    ========================================== */
 
 .btn-primary {
-  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer;
+  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-medium rounded-lg transition-all cursor-pointer;
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: var(--primary-foreground);
   hover:from-var(--primary-light) hover:to-var(--secondary-light);
 }
 
 .btn-secondary {
-  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer;
+  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-medium rounded-lg transition-all cursor-pointer;
   background: linear-gradient(135deg, var(--subtle) 0%, var(--card) 100%);
   color: var(--foreground);
   border: 1px solid var(--border);
@@ -385,7 +368,7 @@
 }
 
 .btn-outline {
-  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-semibold rounded-xl shadow-sm transition-all cursor-pointer;
+  @apply inline-flex items-center gap-2 px-4.5 py-3 text-sm font-medium rounded-lg transition-all cursor-pointer;
   background: transparent;
   color: var(--primary);
   border: 1px solid var(--primary);
