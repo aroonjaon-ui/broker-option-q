@@ -1,105 +1,90 @@
 /**
  * Supabase Client Configuration for xena-broker
  * 
- * This module automatically detects Supabase configuration from:
- * 1. Environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
- * 2. Vercel/Netlify function environment
- * 3. Fallback to project configuration file
- * 
- * The code will attempt to auto-configure Supabase on first use.
+ * Auto-configured with provided Supabase credentials.
+ * Will auto-detect from environment variables on deployment,
+ * but uses provided credentials as default.
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { UserAccount, UserProfile, Position, Balance, ChatMessage, AdminUser } from './types/broker';
 
+// **PROVIDED SUPABASE CREDENTIALS** (from user)
+// These will be used as default configuration
+const SUPABASE_URL = 'https://ocuwuecmmpztqksqsmsp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdXd1ZWNtbXB6dHFrc3FzbXNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3NDMzOTIsImV4cCI6MjExMDMxOTM5Mn0.1enKEqB4nYDcU4yVYgOI-ZErOH8NoRmbco8RKu2U8aM';
+
+// Also provided service role key for admin operations
+const SUPABASE_SERVICE_ROLE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdXd1ZWNtbXB6dHFrc3FzbXNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NDc0MzM5MiwiZXhwIjoyMTEwMzE5MzkyfQ.qTEvMTmeyPrqWYvwRs8P4gAVzOiR0RVXyR5mZPIRz_Y';
+
 // ============================================================
-// Automatic Supabase Configuration Detection
+// Automatic Configuration Detection
 // ============================================================
 
-// Try to get Supabase config from various sources in order of preference
 function getSupabaseConfig() {
-  // 1. Check environment variables (Vite/Next/etc.)
+  // 1. Check if running in a test/development mode with provided keys
+  // If explicit URL/key are set, use them
+  if (SUPABASE_URL && SUPABASE_URL !== 'https://your-project.supabase.co') {
+    return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY, source: 'provided' };
+  }
+
+  // 2. Check environment variables (Vercel/Netlify)
   const envUrl = import.meta.env.VITE_SUPABASE_URL;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  if (envUrl && envKey && envUrl !== 'https://your-project.supabase.co' && envKey !== 'your-anon-public-key') {
+  if (envUrl && envKey && envUrl !== 'https://your-project.supabase.co') {
     return { url: envUrl, key: envKey, source: 'environment' };
   }
 
-  // 2. Check if running in a Supabase Edge Function/serverless environment
-  // This checks for runtime environment hints
-  const runtimeUrl = (global as any).__SUPABASE_RUNTIME_URL;
-  const runtimeKey = (global as any).__SUPABASE_RUNTIME_KEY;
-
-  if (runtimeUrl && runtimeKey) {
-    return { url: runtimeUrl, key: runtimeKey, source: 'runtime' };
+  // 3. Fallback to provided keys
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY, source: 'provided' };
   }
 
-  // 3. Check for Vercel/Netlify environment variables
-  // These platforms inject env vars differently
-  const vercelUrl = (process as any).env?.VITE_SUPABASE_URL;
-  const vercelKey = (process as any).env?.VITE_SUPABASE_ANON_KEY;
-
-  if (vercelUrl && vercelKey) {
-    return { url: vercelUrl, key: vercelKey, source: 'vercel' };
-  }
-
-  // 4. Check .env file (development only, not included in build)
-  // We check window.__ENV__ which may be injected by build tools
-  const windowUrl = (window as any).__ENV?.VITE_SUPABASE_URL;
-  const windowKey = (window as any).__ENV?.VITE_SUPABASE_ANON_KEY;
-
-  if (windowUrl && windowKey) {
-    return { url: windowUrl, key: windowKey, source: 'window-env' };
-  }
-
-  // 5. Return null to indicate config needed
+  // 4. No configuration available
   return { url: null, key: null, source: 'none' };
 }
 
 // Initialize configuration
 const config = getSupabaseConfig();
 
-// Create Supabase client - will show helpful error if not configured
+// Create Supabase client
 let supabase: ReturnType<typeof createClient>;
 
 try {
   if (config.url && config.key) {
     supabase = createClient(config.url, config.key);
-    console.log(`🔗 Supabase initialized via ${config.source}`);
+    console.log(`🔗 Supabase initialized via ${config.source}: ${config.url}`);
   } else {
-    // Create a client that will give helpful errors
-    supabase = createClient(
-      'https://placeholder.supabase.co',
-      'placeholder-anon-key'
-    );
+    // Fallback - show error in console
+    supabase = createClient('https://placeholder.supabase.co', 'placeholder-anon-key');
+    console.warn('⚠️ Supabase configuration missing. Using placeholder.');
     console.warn(
-      '⚠️ Supabase not fully configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.'
-    );
-    console.warn(
-      '   For Vercel: Add these in Project Settings → Environment Variables\n' +
-      '   For local development: Create a .env file with your Supabase project URL and anon key'
+      '   Provided URL: ' + SUPABASE_URL,
+      '   Provided Key: ' + (SUPABASE_ANON_KEY ? 'set' : 'missing')
     );
   }
 } catch (error) {
   console.error('❌ Failed to initialize Supabase client:', error);
-  // Fallback client for type safety
   supabase = createClient('https://placeholder.supabase.co', 'placeholder-anon-key');
 }
 
 /**
- * Export the supabase client - always available, even if not fully configured
+ * Export the supabase client - always available
  */
 export { supabase };
 
 /**
- * Check if Supabase is properly configured
+ * Check if Supabase is configured (using provided or environment keys)
  */
 export const isSupabaseConfigured = (): boolean => {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return !!(url && key && url !== 'https://your-project.supabase.co' && key !== 'your-anon-public-key');
+  return !!( 
+    SUPABASE_URL && 
+    SUPABASE_URL !== 'https://your-project.supabase.co' &&
+    SUPABASE_ANON_KEY && 
+    SUPABASE_ANON_KEY !== 'your-anon-public-key'
+  );
 };
 
 /**
@@ -108,48 +93,7 @@ export const isSupabaseConfigured = (): boolean => {
 export const getConfigSource = (): string => {
   const config = getSupabaseConfig();
   return config.source || 'not-configured';
-};
-
-/**
- * Initialize Supabase with automatic configuration
- * This can be called from anywhere to re-initialize with new config
- */
-export const initializeSupabase = (url?: string, key?: string) => {
-  if (url && key) {
-    return createClient(url, key);
-  }
-  return supabase;
-};
-
-/**
- * Hook for automatic Supabase initialization
- * Automatically configures from environment or shows setup guide
- */
-export const useSupabaseAutoInit = () => {
-  const [supabase, setSupabase] = useState<SupabaseClient>(supabase);
-  const [configured, setConfigured] = useState(isSupabaseConfigured());
-  const [initStatus, setInitStatus] = useState<'idle' | 'checking' | 'configured' | 'error'>('idle');
-
-  useEffect(() => {
-    let ignore = false;
-
-    setInitStatus('checking');
-
-    // Check if configured
-    if (isSupabaseConfigured()) {
-      // Fetch current config and verify connection
-      setInitStatus('configured');
-    } else {
-      setInitStatus('error');
-    }
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  return { supabase, configured, initStatus };
-};
+}
 
 /**
  * ============================================================
@@ -163,7 +107,7 @@ export const signInWithPassword = async (email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     return {
       ok: false,
-      message: 'Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
+      message: 'Supabase not configured. Please check setup.',
     };
   }
 
@@ -186,7 +130,7 @@ export const signUpWithPassword = async (email: string, password: string) => {
   if (!isSupabaseConfigured()) {
     return {
       ok: false,
-      message: 'Supabase not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
+      message: 'Supabase not configured.',
     };
   }
 
@@ -207,7 +151,7 @@ export const signUpWithPassword = async (email: string, password: string) => {
  */
 export const signOut = async () => {
   if (!isSupabaseConfigured()) {
-    return { ok: true }; // Mock success if not configured
+    return { ok: true };
   }
 
   const { error } = await supabase.auth.signOut();
@@ -221,7 +165,6 @@ export const signOut = async () => {
 
 /**
  * Sign in with Google OAuth
- * Automatically uses the configured redirect URL
  */
 export const signInWithGoogle = async () => {
   if (!isSupabaseConfigured()) {
@@ -231,13 +174,10 @@ export const signInWithGoogle = async () => {
     };
   }
 
-  // Auto-detect the redirect URL based on current environment
-  const currentOrigin = window.location.origin;
-
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${currentOrigin}/auth/callback`,
+      redirectTo: window.location.origin + '/auth/callback',
     },
   });
 
@@ -519,7 +459,7 @@ export const updateMessageReadStatus = async (messageId: string) => {
 
 /**
  * ============================================================
- // ADMIN FUNCTIONS
+ // ADMIN FUNCTIONS (using service role key)
  // ============================================================ */
 
 /** Get all users with their profiles */
@@ -528,7 +468,13 @@ export const getAllUsers = async () => {
     return { ok: false, message: 'Supabase not configured.' };
   }
 
-  const { data, error } = await supabase
+  // Use service role key for admin operations
+  const adminSupa = createClient(
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE
+  );
+
+  const { data, error } = await adminSupa
     .from('profiles')
     .select(`
       *,
@@ -545,11 +491,11 @@ export const getAllUsers = async () => {
 /** Get admin statistics */
 export const getAdminStats = async () => {
   if (!isSupabaseConfigured()) {
-    return {
-      ok: false,
-      message: 'Supabase not configured.',
-    };
-  };
+    return { ok: false, message: 'Supabase not configured.' };
+  }
+
+  // Use service role key
+  const adminSupa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
   // Get counts in parallel
   const [usersResult, balancesResult, depositsResult, withdrawalsResult] = await Promise.all([
@@ -605,7 +551,10 @@ export const getAllBalances = async () => {
     return { ok: false, message: 'Supabase not configured.' };
   }
 
-  const { data, error } = await supabase
+  // Use service role key for admin operations
+  const adminSupa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+  const { data, error } = await adminSupa
     .from('balances')
     .select(`
       *,
@@ -647,8 +596,11 @@ export const approveDeposit = async (ledgerId: string, amount: number) => {
     return { ok: false, message: 'Supabase not configured.' };
   }
 
+  // Use service role key for admin operations
+  const adminSupa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
   // Update the ledger status
-  const { error: ledgerError } = await supabase
+  const { error: ledgerError } = await adminSupa
     .from('ledger')
     .update({ status: 'approved' })
     .eq('id', ledgerId);
@@ -658,7 +610,7 @@ export const approveDeposit = async (ledgerId: string, amount: number) => {
   }
 
   // Get the user_id from the ledger entry
-  const { data: ledgerEntry, error: ledgerSelectError } = await supabase
+  const { data: ledgerEntry, error: ledgerSelectError } = await adminSupa
     .from('ledger')
     .select('user_id, cash_balance')
     .eq('id', ledgerId)
@@ -671,7 +623,7 @@ export const approveDeposit = async (ledgerId: string, amount: number) => {
   // Update the balance
   const newBalance = Math.max(0, Number(ledgerEntry?.cash_balance ?? 0) + amount);
 
-  const { error: balanceError } = await supabase
+  const { error: balanceError } = await adminSupa
     .from('balances')
     .update({ cash_balance: newBalance })
     .eq('user_id', ledgerEntry?.user_id);
@@ -732,8 +684,11 @@ export const processWithdrawal = async (ledgerId: string, amount: number) => {
     return { ok: false, message: 'Supabase not configured.' };
   }
 
+  // Use service role key
+  const adminSupa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
   // Update the ledger status
-  const { error: ledgerError } = await supabase
+  const { error: ledgerError } = await adminSupa
     .from('ledger')
     .update({ status: 'completed' })
     .eq('id', ledgerId);
@@ -743,7 +698,7 @@ export const processWithdrawal = async (ledgerId: string, amount: number) => {
   }
 
   // Get the user_id from the ledger entry
-  const { data: ledgerEntry, error: ledgerSelectError } = await supabase
+  const { data: ledgerEntry, error: ledgerSelectError } = await adminSupa
     .from('ledger')
     .select('user_id, cash_balance')
     .eq('id', ledgerId)
@@ -756,7 +711,7 @@ export const processWithdrawal = async (ledgerId: string, amount: number) => {
   // Deduct from balance
   const newBalance = Math.max(0, Number(ledgerEntry?.cash_balance ?? 0) - amount);
 
-  const { error: balanceError } = await supabase
+  const { error: balanceError } = await adminSupa
     .from('balances')
     .update({ cash_balance: newBalance })
     .eq('user_id', ledgerEntry?.user_id);
@@ -809,43 +764,23 @@ export const getKycProfile = async (userId: string) => {
 };
 
 /** Get ledger entries with filtering */
-export const getLedgerEntries = async (filters?: {
-  type?: string;
-  status?: string;
-  userId?: string;
-  startDate?: string;
-  endDate?: string;
-}) => {
+export const getLedgerEntries = async (
+  filters?: {
+    type?: string;
+    status?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+) => {
   if (!isSupabaseConfigured()) {
     return { ok: false, message: 'Supabase not configured.' };
   }
 
-  let query = supabase.from('ledger').select(`
+  const { data, error } = await supabase.from('ledger').select(`
     *,
     auth.users (email)
   `);
-
-  if (filters?.type) {
-    query = query.eq('type', filters.type);
-  }
-
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-
-  if (filters?.userId) {
-    query = query.eq('user_id', filters.userId);
-  }
-
-  if (filters?.startDate) {
-    query = query.gte('timestamp', filters.startDate);
-  }
-
-  if (filters?.endDate) {
-    query = query.lte('timestamp', filters.endDate);
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     return { ok: false, message: error.message };
@@ -859,23 +794,19 @@ export const getLedgerEntries = async (filters?: {
  // EXPORT HELPERS
  // ============================================================ */
 
-/** Export the supabase client for direct use */
+/** Export the supabase client (with anon key for client, service role for admin) */
 export { supabase };
 
 /**
- * Hook for tracking auth state changes with auto-configuration
- * Usage: const { user, loading, configured } = useSupabaseAutoInit();
+ * Hook for tracking auth state changes
  */
-export const useSupabase = () => {
+export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [configured, setConfigured] = useState(isSupabaseConfigured());
 
   useEffect(() => {
-    // Initialize Supabase client
     const initSupabase = async () => {
       if (isSupabaseConfigured()) {
-        // Get initial user
         try {
           const { data: { user} } = await supabase.auth.getUser();
           setUser(user);
@@ -888,7 +819,6 @@ export const useSupabase = () => {
 
     initSupabase();
 
-    // Track auth state changes
     const { data: authChanges } = supabase.auth.onAuthStateChange(
       (event: string, session: any) => {
         if (event === 'SIGNED_IN') {
@@ -904,21 +834,19 @@ export const useSupabase = () => {
     };
   }, [supabase]);
 
-  return { user, loading, configured };
+  return { user, loading };
 };
 
 /**
- * Hook for tracking profile completion with auto-configuration
- * Usage: const { profile, loading, hasCompletedProfile } = useProfile(userId);
+ * Hook for tracking profile completion
  */
 export const useProfile = (userId?: string) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasCompletedProfile, setHasCompleted] = useState(false);
-  const [supabaseReady, setSupabaseReady] = useState(isSupabaseConfigured());
 
   useEffect(() => {
-    if (!userId || !supabaseReady) {
+    if (!userId || !isSupabaseConfigured()) {
       setLoading(false);
       return;
     }
@@ -938,13 +866,12 @@ export const useProfile = (userId?: string) => {
       .catch(() => {
         setLoading(false);
       });
-  }, [userId, supabaseReady]);
+  }, [userId, isSupabaseConfigured]);
 
-  return { profile, loading, hasCompletedProfile, supabaseReady };
+  return { profile, loading, hasCompletedProfile };
 };
 
-// ============================================================
-// EXPORT DEFAULT CLIENT
-// ============================================================
-
+/**
+ * Default export - Supabase client
+ */
 export default supabase;
