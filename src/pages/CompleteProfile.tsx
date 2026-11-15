@@ -186,7 +186,7 @@ export default function CompleteProfile({
               <option value="GB">United Kingdom</option>
               <option value="AU">Australia</option>
               <option value="DE">Germany</option>
-            />
+            </select>
             {errors.country && (
               <p className="text-xs text-[var(--destructive)] mt-1">{errors.country}</p>
             )}

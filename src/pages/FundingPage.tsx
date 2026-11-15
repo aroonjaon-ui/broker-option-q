@@ -230,7 +230,7 @@ export default function FundingPage({
                 <stop offset="55%" stopColor="#34D399" />
                 <stop offset="100%" stopColor="#A5B4FC" />
               </linearGradient>
-            </g>
+            </defs>
             <g className="animate-bar-float" style={{ animationDelay: '0s' }}>
               <rect x="18" y="48" width="8" height="22" rx="3" fill="#38BDF8" fillOpacity="0.35" />
             </g>

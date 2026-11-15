@@ -97,11 +97,11 @@ export default function TopNav({
           <button
             type="button"
             onClick={handleAuthAction}
-            className="hidden sm:inline-flex items-center justify-center px-4.5 py-2 text-sm font-semibold rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`hidden sm:inline-flex items-center justify-center px-4.5 py-2 text-sm font-semibold rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] whitespace-nowrap shrink-0 cursor-pointer ${
               user
                 ? 'bg-[var(--card)] text-[var(--foreground)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)]'
                 : 'bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-[var(--primary-foreground)] hover:from-[var(--primary-100)] hover:to-[var(--secondary-100)]'
-            }"}
+            }`}
           >
             {authButtonLabel}
           </button>
@@ -142,11 +142,11 @@ export default function TopNav({
             <button
               type="button"
               onClick={handleAuthAction}
-              className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] whitespace-nowrap cursor-pointer ${
+              className={`w-full px-4 py-2.5 text-sm font-semibold rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] whitespace-nowrap cursor-pointer ${
                 user
                   ? 'bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:bg-[var(--destructive-100)]'
                   : 'bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-[var(--primary-foreground)] hover:from-[var(--primary-100)] hover:to-[var(--secondary-100)]'
-              }"
+              }`}
             >
               {authButtonLabel}
             </button>

@@ -783,9 +783,6 @@ export const getLedgerEntries = async (
  // EXPORT HELPERS
  // ============================================================ */
 
-/** Export the supabase client (with anon key for client, service role for admin) */
-export { supabase };
-
 /**
  * Hook for tracking auth state changes
  */
