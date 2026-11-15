@@ -534,6 +534,48 @@ export default function FundingPage({
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+
+            <div
+              className="bg-gradient-to-b from-purple-500/5 via-pink-500/10 to-transparent border border-purple-500/20 rounded-2xl shadow-[var(--shadow)] p-5 sm:p-6 flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="font-display text-base sm:text-lg font-bold text-purple-500">
+                  Admin-Verified Accounts
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm text-[var(--muted-foreground)] leading-relaxed">
+                  15% of users have verified accounts for faster deposit processing and priority support.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => console.log('View admin panel')}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-purple-500 bg-white/10 rounded-xl hover:bg-white/15 transition-all cursor-pointer"
+              >
+                <span>View Admin Panel</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div
+              className="bg-gradient-to-b from-blue-500/5 via-cyan-500/10 to-transparent border border-blue-500/20 rounded-2xl shadow-[var(--shadow)] p-5 sm:p-6 flex flex-col justify-between"
+            >
+              <div>
+                <h3 className="font-display text-base sm:text-lg font-bold text-blue-500">
+                  24/7 Platform Support
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm text-[var(--muted-foreground)] leading-relaxed">
+                  Instant support for urgent issues — help is available around the clock for all account holders.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => console.log('Contact support')}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-500 bg-white/10 rounded-xl hover:bg-white/15 transition-all cursor-pointer"
+              >
+                <span>Contact Support</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -549,7 +591,7 @@ export default function FundingPage({
             if (e.target === e.currentTarget) setModalTransfer(null);
           }}
         >
-          <div className="w-full max-w-md bg-[var(--modal-bg)] border border-[var(--modal-border)] rounded-2xl p-6 shadow-[var(--modal-shadow)]">
+          <div className="w-full max-w-md bg-[var(--modal-bg)] border border-[var(--modal-border)] rounded-2xl shadow-[var(--modal-shadow)] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-[var(--modal-border)]">
               <h2
                 id="transfer-modal-title"
@@ -600,7 +642,7 @@ export default function FundingPage({
               </button>
             </div>
 
-            <form onSubmit={handleTransferSubmit} className="mt-4 space-y-4">
+            <form onSubmit={handleTransferSubmit} className="mt-4 space-y-4 max-h-[80vh] overflow-y-auto">
               {/* Copyable Custody Deposit Account Details (shown for Deposit) */}
               {modalTransfer === 'deposit' && (
                 <div className="rounded-2xl bg-[var(--modal-card-bg)] border border-[var(--modal-card-border)] p-4 space-y-2.5">

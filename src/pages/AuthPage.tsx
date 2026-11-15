@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import { AlertCircle, ArrowRight } from 'lucide-react';
+import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { UserAccount } from '../types/broker';
+import CompleteProfile from '../pages/CompleteProfile';
 
 interface AuthPageProps {
   mode: 'login' | 'signup';
   onSwitchMode: (mode: 'login' | 'signup') => void;
   onLogin: (email: string, password: string) => { ok: boolean; message?: string };
-  onSignup: (name: string, email: string, password: string) => { ok: boolean; message?: string };
+  onSignup: (email: string, password: string) => { ok: boolean; message?: string };
   onDemoLogin: () => void;
+  onCompleteProfile: (formData: {
+    firstName: string;
+    lastName: string;
+    country: string;
+    email: string;
+    termsAccepted: boolean;
+  }) => void;
+  showCompleteProfile: boolean;
 }
 
 export default function AuthPage({
@@ -16,8 +25,9 @@ export default function AuthPage({
   onLogin,
   onSignup,
   onDemoLogin,
+  onCompleteProfile,
+  showCompleteProfile,
 }: AuthPageProps) {
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
@@ -39,15 +49,11 @@ export default function AuthPage({
     }
 
     if (mode === 'signup') {
-      if (name.trim().length < 2) {
-        setError('Enter your full legal name.');
-        return;
-      }
       if (!acceptedTerms) {
         setError('Please acknowledge the brokerage account agreement to continue.');
         return;
       }
-      const res = onSignup(name.trim(), trimmedEmail, password);
+      const res = onSignup(trimmedEmail, password);
       if (!res.ok && res.message) {
         setError(res.message);
       }
@@ -108,60 +114,85 @@ export default function AuthPage({
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           {mode === 'signup' && (
             <div>
-              <label htmlFor="auth-name" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Full Name
+              <label htmlFor="auth-email" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Email Address
               </label>
               <input
-                id="auth-name"
-                type="text"
+                id="auth-email"
+                type="email"
                 required
-                value={name}
+                value={email}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  setEmail(e.target.value);
                   setError(null);
                 }}
-                placeholder="Alex Mercer"
+                placeholder="name@company.com"
                 className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
               />
             </div>
           )}
 
-          <div>
-            <label htmlFor="auth-email" className="block text-sm font-semibold text-slate-700 mb-1.5">
-              Email Address
-            </label>
-            <input
-              id="auth-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder="name@company.com"
-              className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
-            />
-          </div>
+          {mode === 'login' && (
+            <div>
+              <label htmlFor="auth-email" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Email Address
+              </label>
+              <input
+                id="auth-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
+                placeholder="name@company.com"
+                className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+              />
+            </div>
+          )}
 
-          <div>
-            <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700 mb-1.5">
-              Password
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setError(null);
-              }}
-              placeholder="Minimum 6 characters"
-              className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
-            />
-          </div>
+          {mode === 'signup' && (
+            <div>
+              <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Password
+              </label>
+              <input
+                id="auth-password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Minimum 6 characters"
+                className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+              />
+            </div>
+          )}
+
+          {mode === 'login' && (
+            <div>
+              <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Password
+              </label>
+              <input
+                id="auth-password"
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Minimum 6 characters"
+                className="w-full px-3.5 py-2.5 text-[15px] text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+              />
+            </div>
+          )}
 
           {mode === 'signup' && (
             <label className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-600 pt-1 cursor-pointer">
@@ -189,7 +220,7 @@ export default function AuthPage({
 
           <button
             type="submit"
-            className="w-full py-3 px-4 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-xs hover:from-blue-700 hover:to-indigo-700 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-xs hover:from-blue-700 hover:to-indigo-600 transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>
               {mode === 'login' ? 'Log In & Go to Funding' : 'Create Account & Fund'}
@@ -197,6 +228,14 @@ export default function AuthPage({
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+
+        {showCompleteProfile && (
+          <CompleteProfile
+            email={email}
+            onComplete={onCompleteProfile}
+            onSkip={onSwitchMode}
+          />
+        )}
 
         <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
           <button

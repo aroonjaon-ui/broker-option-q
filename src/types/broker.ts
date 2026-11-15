@@ -26,6 +26,7 @@ export interface UserAccount {
   email: string;
   accountNumber: string;
   createdAt: string;
+  hasCompletedProfile: boolean;
 }
 
 export type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y';

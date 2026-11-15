@@ -4,6 +4,7 @@ import WithdrawalToastFeed from './components/WithdrawalToastFeed';
 import PlatformModals, { AppModalKind } from './components/PlatformModals';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
+import CompleteProfile from './pages/CompleteProfile';
 import TradePage from './pages/TradePage';
 import PortfolioPage from './pages/PortfolioPage';
 import MarketsPage from './pages/MarketsPage';
@@ -444,10 +445,12 @@ export default function App() {
         email,
         accountNumber: `XN-${Math.floor(100000 + Math.random() * 899999)}`,
         createdAt: new Date().toISOString(),
+        hasCompletedProfile: false,
       };
       setCredentials((prev) => [...prev, { user: newUser, password }]);
       setUser(newUser);
-      navigateTo('funding');
+      // Redirect to CompleteProfile to collect missing profile information
+      navigateTo('complete-profile');
 
       markPlatformInfoSeen();
       const postSignupModals: AppModalKind[] = ['signup_bonus', 'platform_info'];
@@ -500,7 +503,12 @@ export default function App() {
         };
       }
       setUser(match.user);
-      navigateTo('funding');
+      // Check if profile is complete, if not redirect to CompleteProfile
+      if (!match.hasCompletedProfile) {
+        navigateTo('complete-profile');
+      } else {
+        navigateTo('funding');
+      }
       return { ok: true };
     },
     [credentials, navigateTo]
@@ -513,6 +521,7 @@ export default function App() {
       email: 'alex.mercer@xenabroker.com',
       accountNumber: 'XN-482910',
       createdAt: new Date().toISOString(),
+      hasCompletedProfile: true,
     };
     setUser(demo);
     navigateTo('funding');
@@ -527,7 +536,7 @@ export default function App() {
     (name: string, email: string) => {
       setUser((prev) => {
         if (!prev) return prev;
-        const updated = { ...prev, name, email };
+        const updated = { ...prev, name, email, hasCompletedProfile: true };
         setCredentials((creds) =>
           creds.map((c) => (c.user.id === prev.id ? { ...c, user: updated } : c))
         );
@@ -834,6 +843,23 @@ export default function App() {
             onLogin={handleLogin}
             onSignup={handleSignup}
             onDemoLogin={handleDemoLogin}
+            onCompleteProfile={formData => {
+              handleUpdateProfile(`${formData.firstName} ${formData.lastName}`, user?.email ?? '');
+              navigateTo('home');
+            }}
+            showCompleteProfile={activePage === 'signup'}
+          />
+        )}
+
+        {/* If user exists but hasn't completed profile, show CompleteProfile */}
+        {user && !user.hasCompletedProfile && activePage !== 'complete-profile' && (
+          <CompleteProfile
+            initialEmail={user?.email}
+            onComplete={formData => {
+              handleUpdateProfile(`${formData.firstName} ${formData.lastName}`, user.email);
+              navigateTo('home');
+            }}
+            onSkip={() => navigateTo('home')}
           />
         )}
 
