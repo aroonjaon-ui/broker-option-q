@@ -10,18 +10,6 @@ import PortfolioPage from './pages/PortfolioPage';
 import MarketsPage from './pages/MarketsPage';
 import FundingPage from './pages/FundingPage';
 import {
-  supabase,
-  useAuth,
-  useProfile,
-  useSupabaseAutoInit,
-  useSupabase,
-  hasCompletedProfile,
-  setHasCompletedProfile,
-  getCurrentUser,
-  isSupabaseConfigured,
-  getConfigSource,
-} from './supabaseClient';
-import {
   INITIAL_INDICES,
   INITIAL_STOCKS,
   createFreshCashBrokerState,
@@ -283,31 +271,6 @@ export default function App() {
   const [kyc, setKyc] = useState<KycProfile | null>(loadSavedKyc);
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
   
-  // Supabase auto-initialization hooks
-  const { user: supaUser, loading: supaLoading, configured: supaConfigured } = useSupabase();
-  const { initialized, initStatus } = useSupabaseAutoInit();
-  
-  // Use Supabase user if available, otherwise fall back to localStorage
-  useEffect(() => {
-    // Priority: Supabase auth > LocalStorage > Null
-    if (supaUser) {
-      setUser(supaUser);
-    } else if (loadSavedUser()) {
-      // Map localStorage user to have hasCompletedProfile
-      const saved = loadSavedUser();
-      if (saved && !saved.hasCompletedProfile) {
-        setUser({ ...saved, hasCompletedProfile: false });
-      }
-    }
-    // If Supabase is not configured, try localStorage
-    else if (!supaConfigured && !initialized) {
-      const saved = loadSavedUser();
-      if (saved) {
-        setUser(saved.hasCompletedProfile ? saved : { ...saved, hasCompletedProfile: false });
-      }
-    }
-  }, [supaUser, supaConfigured, initialized, loadSavedUser]);
-
   const enqueueModals = useCallback((kinds: AppModalKind[]) => {
     setModalQueue((prev) => {
       const next = [...prev];

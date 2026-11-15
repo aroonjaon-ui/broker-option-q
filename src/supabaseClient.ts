@@ -223,6 +223,7 @@ export const getProfile = async (userId: string) => {
 export const upsertProfile = async (
   userId: string,
   profileData: {
+    email?: string;
     first_name: string;
     last_name: string;
     country: string;
@@ -240,6 +241,7 @@ export const upsertProfile = async (
     .from('profiles')
     .upsert({
       user_id: userId,
+      ...(profileData.email ? { email: profileData.email } : {}),
       first_name: profileData.first_name,
       last_name: profileData.last_name,
       country: profileData.country,
@@ -476,10 +478,7 @@ export const getAllUsers = async () => {
 
   const { data, error } = await adminSupa
     .from('profiles')
-    .select(`
-      *,
-      auth.users (id, email, created_at)
-    `);
+    .select('*');
 
   if (error) {
     return { ok: false, message: error.message };
@@ -556,10 +555,7 @@ export const getAllBalances = async () => {
 
   const { data, error } = await adminSupa
     .from('balances')
-    .select(`
-      *,
-      auth.users (email)
-    `);
+    .select('*');
 
   if (error) {
     return { ok: false, message: error.message };
@@ -576,10 +572,7 @@ export const getPendingDeposits = async () => {
 
   const { data, error } = await supabase
     .from('ledger')
-    .select(`
-      *,
-      auth.users (email)
-    `)
+    .select('*')
     .eq('type', 'deposit')
     .eq('status', 'pending');
 
@@ -664,10 +657,7 @@ export const getPendingWithdrawals = async () => {
 
   const { data, error } = await supabase
     .from('ledger')
-    .select(`
-      *,
-      auth.users (email)
-    `)
+    .select('*')
     .eq('type', 'withdrawal')
     .eq('status', 'pending');
 
@@ -777,10 +767,9 @@ export const getLedgerEntries = async (
     return { ok: false, message: 'Supabase not configured.' };
   }
 
-  const { data, error } = await supabase.from('ledger').select(`
-    *,
-    auth.users (email)
-  `);
+  const { data, error } = await supabase
+    .from('ledger')
+    .select('*');
 
   if (error) {
     return { ok: false, message: error.message };
