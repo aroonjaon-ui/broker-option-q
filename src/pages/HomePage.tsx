@@ -499,10 +499,55 @@ export default function HomePage({
               </div>
             ))}
           </div>
+
+          {/* Compare accounts */}
+          <div className="mt-10 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Account feature
+                  </th>
+                  {ACCOUNT_PLANS.map((plan) => (
+                    <th
+                      key={plan.name}
+                      className={`px-5 py-3.5 text-[11px] font-bold uppercase tracking-[0.14em] ${
+                        plan.highlight ? 'text-emerald-700' : 'text-slate-600'
+                      }`}
+                    >
+                      {plan.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Minimum opening balance', 'Free', '$0', '$0'],
+                  ['Commission on US equities', '$0', '$0', '$0'],
+                  ['Order types', 'Market', 'Market & limit', 'Market & limit'],
+                  ['Cash reserve for working orders', '—', 'Included', 'Included'],
+                  ['Portfolio export (CSV)', '—', 'Included', 'Included'],
+                  ['Identity verification', 'Not required', 'Required', 'Required'],
+                  ['Bank deposits & withdrawals', '—', 'Included', 'Included'],
+                  ['Funding review', 'Instant demo credit', 'Same day', 'Priority'],
+                ].map((row, index) => (
+                  <tr
+                    key={row[0]}
+                    className={`border-b border-slate-100 last:border-0 ${
+                      index % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'
+                    }`}
+                  >
+                    <td className="px-5 py-3 font-medium text-slate-700">{row[0]}</td>
+                    <td className="px-5 py-3 text-slate-500">{row[1]}</td>
+                    <td className="px-5 py-3 font-semibold text-slate-900">{row[2]}</td>
+                    <td className="px-5 py-3 text-slate-600">{row[3]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
-
-      {/* ============ HOW IT WORKS ============ */}
       <section className="bg-[#F8FAFC] py-14 sm:py-18">
         <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
           <div className="max-w-2xl">
@@ -734,6 +779,26 @@ export default function HomePage({
               <Globe2 className="w-4 h-4" />
               Explore markets
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ RISK WARNING ============ */}
+      <section className="bg-white border-t border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-8">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                Risk warning
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                Trading US equities involves risk. The value of investments can fall as well as
+                rise, and you may get back less than you invested. Past performance is not a
+                reliable indicator of future results. Only trade with capital you can afford to
+                lose, and read the full terms and fee schedule before opening an account.
+              </p>
+            </div>
           </div>
         </div>
       </section>

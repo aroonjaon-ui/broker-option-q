@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, LogOut, Menu, X } from 'lucide-react';
+import { ArrowRight, Globe2, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { PageId, UserAccount } from '../types/broker';
 
 interface TopNavProps {
@@ -31,8 +31,30 @@ export default function TopNav({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-md">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-8">
+    <header className="sticky top-0 z-40 bg-white">
+      {/* Utility bar */}
+      <div className="hidden sm:block bg-[#06182B]">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between text-[11px] font-medium tracking-wide text-slate-400">
+          <div className="flex items-center gap-5">
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Client funds segregated
+            </span>
+            <span className="hidden lg:inline-flex items-center gap-1.5">
+              <Globe2 className="w-3.5 h-3.5 text-emerald-400" />
+              US equities · Global access
+            </span>
+          </div>
+          <div className="flex items-center gap-5">
+            <span>Support 24/5</span>
+            <span className="text-slate-500">|</span>
+            <span className="text-slate-300">EN</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-slate-200 bg-white/95 backdrop-blur-md">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-8">
         {/* Brand */}
         <button
           type="button"
@@ -125,6 +147,7 @@ export default function TopNav({
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
+      </div>
       </div>
 
       {/* Mobile drawer */}

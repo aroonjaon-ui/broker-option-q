@@ -40,9 +40,15 @@
     <!-- Surfaces startup/JS errors instead of showing a blank white page -->
     <script>
       (function () {
-        function show(title, detail) {
+        function report(title, detail) {
           try {
             var root = document.getElementById('root');
+            // Only take over the screen when the app genuinely rendered nothing.
+            // A caught error inside a working page must not wipe a healthy UI.
+            if (root && root.childElementCount > 0) {
+              console.error(title, detail);
+              return;
+            }
             var pre = document.getElementById('startup-error');
             if (!pre) {
               pre = document.createElement('pre');
@@ -52,13 +58,12 @@
             pre.style.display = 'block';
             pre.innerHTML =
               '<b>' + title + '</b>\n\n' + String(detail || 'Unknown error').replace(/</g, '&lt;');
-            if (root) root.style.display = 'none';
           } catch (e) {}
         }
 
         window.addEventListener('error', function (event) {
           if (event && (event.message || event.error)) {
-            show(
+            report(
               'Xena Broker failed to start',
               (event.error && event.error.stack) || event.message
             );
@@ -67,11 +72,24 @@
 
         window.addEventListener('unhandledrejection', function (event) {
           var reason = event && event.reason;
-          show(
-            'Xena Broker hit an unhandled error',
-            (reason && reason.stack) || reason
-          );
+          report('Xena Broker hit an unhandled error', (reason && reason.stack) || reason);
         });
+
+        // Watchdog: if nothing rendered and no error fired, say so instead of showing white.
+        window.setTimeout(function () {
+          try {
+            var root = document.getElementById('root');
+            if (root && root.childElementCount === 0 && !document.getElementById('startup-error')) {
+              report(
+                'Xena Broker did not finish loading',
+                'Nothing has rendered after 8 seconds.\n\n' +
+                  'Page: ' + window.location.href + '\n\n' +
+                  'This usually means the deployed build is failing or a script asset could not be loaded.\n' +
+                  'Try a hard refresh (Ctrl + Shift + R).'
+              );
+            }
+          } catch (e) {}
+        }, 8000);
       })();
     </script>
 
