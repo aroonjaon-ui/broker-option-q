@@ -1,539 +1,740 @@
-import { useState } from 'react';
-import { ArrowRight, Building2, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BadgeCheck,
+  BarChart3,
+  CheckCircle2,
+  CreditCard,
+  Globe2,
+  LineChart,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Trophy,
+  Wallet,
+  Zap,
+} from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import fundingVaultImg from '../assets/images/home_funding_vault_1794692664965.jpg';
 import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
 import portfolioStudioImg from '../assets/images/home_portfolio_studio_1794692664964.jpg';
 import { MarketIndex, OrderSide, PageId, Stock, UserAccount } from '../types/broker';
-import { formatCurrency, formatPercent, formatSignedCurrency } from '../utils/formatters';
+import { formatCurrency, formatPercent } from '../utils/formatters';
 
 interface HomePageProps {
   user: UserAccount | null;
   stocks: Stock[];
+  indices?: MarketIndex[];
+  cashBalance?: number;
+  totalPortfolioValue?: number;
   onNavigate: (page: PageId) => void;
   onTradeSymbol: (symbol: string, side: OrderSide) => void;
 }
 
-function WorkflowCardImage({
-  src,
-  alt,
-  stepNumber,
-  badgeGradient,
-  fallbackGradient,
-  FallbackIcon,
-}: {
-  src: string;
-  alt: string;
-  stepNumber: string;
-  badgeGradient: string;
-  fallbackGradient: string;
-  FallbackIcon: typeof ShieldCheck;
-}) {
-  const [failed, setFailed] = useState(false);
+const ACCOUNT_PLANS = [
+  {
+    name: 'Demo',
+    tagline: 'Practise with zero risk',
+    min: 'Free',
+    highlight: false,
+    features: ['Live demo cash balance', 'Full trade desk & charts', 'Deposit / withdrawal flow', 'Reset your account anytime'],
+    cta: 'Launch demo',
+    page: 'trade' as PageId,
+  },
+  {
+    name: 'Standard',
+    tagline: 'For everyday investors',
+    min: '$0 minimum',
+    highlight: true,
+    features: ['Commission-free US equities', 'Real-time portfolio analytics', 'Bank transfer funding', 'KYC verification & support'],
+    cta: 'Open account',
+    page: 'signup' as PageId,
+  },
+  {
+    name: 'Active Trader',
+    tagline: 'Built for high volume',
+    min: '$0 minimum',
+    highlight: false,
+    features: ['Market & limit orders', 'Working-order cash reserves', 'CSV portfolio exports', 'Priority funding review'],
+    cta: 'Start trading',
+    page: 'trade' as PageId,
+  },
+];
 
-  return (
-    <div className="relative h-60 sm:h-64 lg:h-72 w-full overflow-hidden bg-[var(--card)] border-b border-[var(--border)]/75">
-      {!failed ? (
-        <img
-          src={src}
-          alt={alt}
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-          className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-        />
-      ) : (
-        <div
-          className={`h-full w-full flex items-center justify-center bg-gradient-to-br ${fallbackGradient}`}
-        >
-          <FallbackIcon className="w-12 h-12 text-white/75" />
-        </div>
-      )}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/15 to-transparent"
-      />
-      <div
-        className={`absolute bottom-4 left-6 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${badgeGradient} text-white font-mono text-sm font-bold shadow-md ring-1 ring-white/25 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105`}
-      >
-        {stepNumber}
-      </div>
-    </div>
-  );
-}
+const WHY_CARDS = [
+  {
+    icon: Zap,
+    title: 'Fast order execution',
+    body: 'Market orders fill instantly against live quotes; limit orders stay working until your price prints.',
+  },
+  {
+    icon: Wallet,
+    title: 'Transparent funding',
+    body: 'Track every deposit and withdrawal in one ledger. Deposits are credited the moment an admin approves them.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Real-time analytics',
+    body: 'Unrealised P&L, allocation and cash reserves update as prices move, so you always know where you stand.',
+  },
+  {
+    icon: Lock,
+    title: 'Secure account isolation',
+    body: 'Each account is stored separately with row-level security, so only you and the admin desk can see your data.',
+  },
+];
+
+const AWARDS = [
+  {
+    year: '2026',
+    title: 'Best Online Trading Platform',
+    org: 'Global Finance Awards',
+    category: 'Equities & ETFs',
+  },
+  {
+    year: '2025',
+    title: 'Most Trusted Brokerage Brand',
+    org: 'FinTech Excellence Awards',
+    category: 'Client Trust',
+  },
+  {
+    year: '2025',
+    title: 'Best Mobile Trading Experience',
+    org: 'TradingTech Awards',
+    category: 'Product Design',
+  },
+  {
+    year: '2024',
+    title: 'Excellence in Client Support',
+    org: 'Broker Review Awards',
+    category: 'Customer Service',
+  },
+  {
+    year: '2024',
+    title: 'Fastest Order Execution',
+    org: 'Markets Summit',
+    category: 'Execution Quality',
+  },
+  {
+    year: '2023',
+    title: 'Best New Brokerage Brand',
+    org: 'Finance Innovators',
+    category: 'Brand & Growth',
+  },
+];
+
+const STEPS = [  {
+    n: '01',
+    img: fundingVaultImg,
+    title: 'Open an account & fund it',
+    body: 'Register in seconds, complete your profile, then link a bank account and submit a deposit for review.',
+    cta: 'Create account',
+    page: 'signup' as PageId,
+  },
+  {
+    n: '02',
+    img: tradingDeskImg,
+    title: 'Place your first trade',
+    body: 'Search any US equity, inspect the interactive chart, and send a market or limit order from the trade desk.',
+    cta: 'Open trade desk',
+    page: 'trade' as PageId,
+  },
+  {
+    n: '03',
+    img: portfolioStudioImg,
+    title: 'Track, manage & withdraw',
+    body: 'Monitor holdings and working orders, export statements, and withdraw settled cash back to your bank.',
+    cta: 'View portfolio',
+    page: 'portfolio' as PageId,
+  },
+];
 
 export default function HomePage({
   user,
   stocks,
+  indices = [],
+  cashBalance,
+  totalPortfolioValue,
   onNavigate,
   onTradeSymbol,
 }: HomePageProps) {
   const featuredSymbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'META'];
-  const featuredStocks = featuredSymbols
+  const featured = featuredSymbols
     .map((sym) => stocks.find((s) => s.symbol === sym))
     .filter((s): s is Stock => Boolean(s));
 
+  const previewStock = featured[0] ?? stocks[0];
+  const previewChange = previewStock
+    ? previewStock.price - previewStock.previousClose
+    : 0;
+  const previewPct = previewStock ? (previewChange / previewStock.previousClose) * 100 : 0;
+
+  const ticker = [
+    ...indices.slice(0, 4).map((i) => ({
+      key: i.id,
+      label: i.name,
+      value: i.isYield ? `${i.value.toFixed(2)}%` : i.value.toLocaleString('en-US', { maximumFractionDigits: 2 }),
+      pct: i.changePercent,
+    })),
+    ...featured.map((s) => ({
+      key: s.symbol,
+      label: s.symbol,
+      value: formatCurrency(s.price),
+      pct: ((s.price - s.previousClose) / s.previousClose) * 100,
+    })),
+  ];
+
+  const portfolioValue =
+    typeof totalPortfolioValue === 'number' ? totalPortfolioValue : cashBalance ?? 0;
+
   return (
-    <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="pt-2">
-        <div className="relative overflow-hidden flex flex-col justify-between bg-[var(--background)] text-[var(--foreground)] rounded-3xl p-7 sm:p-10 lg:p-12 shadow-lg border border-[var(--border)]">
-          {/* Subtle grid pattern background */}
-          <div
-            className="absolute inset-0 overflow-hidden bg-[url('/patterns/grid-pattern.svg')] bg-center bg-no-repeat opacity-5"
-          />
+    <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-8">
+      {/* ============ HERO ============ */}
+      <section className="relative overflow-hidden bg-[#06182B] text-white">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-32 right-0 h-[520px] w-[520px] rounded-full bg-emerald-500/15 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-40 -left-24 h-[460px] w-[460px] rounded-full bg-sky-500/15 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]"
+        />
 
-          {/* Ambient breathing orbs */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[var(--primary)]/15 blur-3xl animate-ambient-breathe"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-28 left-1/3 w-80 h-80 rounded-full bg-[var(--secondary)]/20 blur-3xl animate-ambient-breathe"
-            style={{ animationDelay: '2.5s' }}
-          />
+        <div className="relative max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 pt-14 pb-16 lg:pt-20 lg:pb-24 grid lg:grid-cols-[1.02fr_0.98fr] gap-12 lg:gap-16 items-center">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] sm:text-xs font-semibold tracking-wide text-emerald-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              Commission-free US equities · Instant demo access
+            </span>
 
-          {/* Floating geometric facets corners */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-3xl border border-[var(--border)]/20 bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/5 rotate-12 md:hidden animate-float-slow"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-4 right-4 w-20 h-20 rounded-2xl border border-[var(--border)]/10 bg-[var(--white)]/[0.04] -rotate-12 md:hidden animate-float-reverse"
-          />
+            <h1 className="mt-5 font-display font-extrabold tracking-tight text-white text-[2.4rem] leading-[1.05] sm:text-5xl lg:text-[3.6rem]">
+              Trade global markets{' '}
+              <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-400 bg-clip-text text-transparent">
+                with confidence
+              </span>
+            </h1>
 
-          {/* Desktop sculpture on the right */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none hidden md:block absolute right-6 lg:right-10 top-1/2 -translate-y-1/2 w-[300px] lg:w-[370px] h-[290px]"
-          >
-            {/* Central geometric market wave */}
-            <div className="absolute inset-x-6 top-11 bottom-11 rounded-2xl border border-[var(--border)]/15 bg-gradient-to-br from-[var(--white)]/[0.09] via-[var(--white)]/[0.04] to-transparent backdrop-blur-sm p-5 flex items-end justify-center animate-float-slow" style={{ animationDelay: '1.2s' }}>
-              <svg viewBox="0 0 260 150" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="heroCurveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#38BDF8" />
-                    <stop offset="55%" stopColor="#34D399" />
-                    <stop offset="100%" stopColor="#A5B4FC" />
-                  </linearGradient>
-                  <linearGradient id="heroAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
+            <p className="mt-5 max-w-xl text-[15px] sm:text-lg leading-relaxed text-slate-300">
+              One workspace for funding, execution and portfolio management. Live quotes,
+              interactive charts and zero-commission stock trading — with a funding desk that
+              reviews every transfer.
+            </p>
 
-                {/* Horizontal baseline hairlines */}
-                <line x1="8" y1="36" x2="252" y2="36" stroke="white" strokeOpacity="0.08" strokeDasharray="3 5" />
-                <line x1="8" y1="78" x2="252" y2="78" stroke="white" strokeOpacity="0.08" strokeDasharray="3 5" />
-                <line x1="8" y1="120" x2="252" y2="120" stroke="white" strokeOpacity="0.1" />
-
-                {/* Geometric rising bars */}
-                <g className="animate-bar-float" style={{ animationDelay: '0s' }}>
-                  <rect x="24" y="92" width="12" height="32" rx="4" fill="#38BDF8" fillOpacity="0.35" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '0.4s' }}>
-                  <rect x="56" y="76" width="12" height="48" rx="4" fill="#38BDF8" fillOpacity="0.45" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '0.8s' }}>
-                  <rect x="88" y="84" width="12" height="40" rx="4" fill="#818CF8" fillOpacity="0.45" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '1.2s' }}>
-                  <rect x="120" y="60" width="12" height="64" rx="4" fill="#34D399" fillOpacity="0.55" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '1.6s' }}>
-                  <rect x="152" y="48" width="12" height="76" rx="4" fill="#34D399" fillOpacity="0.65" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '2s' }}>
-                  <rect x="184" y="56" width="12" height="68" rx="4" fill="#38BDF8" fillOpacity="0.55" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '2.4s' }}>
-                  <rect x="216" y="28" width="12" height="96" rx="4" fill="#22D3EE" fillOpacity="0.75" />
-                </g>
-
-                {/* Area fill under trajectory */}
-                <path
-                  d="M 16 112 C 44 108, 62 72, 94 80 C 122 86, 136 44, 168 46 C 194 48, 212 22, 244 18 L 244 128 L 16 128 Z"
-                  fill="url(#heroAreaGrad)"
-                />
-
-                {/* Animated ascending curve */}
-                <path
-                  d="M 16 112 C 44 108, 62 72, 94 80 C 122 86, 136 44, 168 46 C 194 48, 212 22, 244 18"
-                  fill="none"
-                  stroke="url(#heroCurveGrad)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  className="animate-draw-line"
-                />
-
-                {/* Crisp geometric node diamond at curve peak */}
-                <rect
-                  x="239"
-                  y="13"
-                  width="10"
-                  height="10"
-                  rx="2.5"
-                  transform="rotate(45 244 18)"
-                  fill="#67E8F9"
-                  stroke="#0F1E3D"
-                  strokeWidth="2"
-                />
-              </svg>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => onNavigate(user ? 'trade' : 'signup')}
+                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-6 py-3.5 text-sm sm:text-[15px] font-bold text-[#04231A] shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:shadow-emerald-400/30 cursor-pointer"
+              >
+                {user ? 'Go to trade desk' : 'Open a free account'}
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('trade')}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm sm:text-[15px] font-semibold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/10 cursor-pointer"
+              >
+                <LineChart className="w-4 h-4 text-emerald-300" />
+                Try the live demo
+              </button>
             </div>
 
-            {/* Floating rotated diamond glass facet */}
-            <div className="absolute top-6 right-10 w-24 h-24 rounded-2xl border border-[var(--border)]/30 bg-gradient-to-br from-[var(--primary)]/20 to-[var(--secondary)]/10 backdrop-blur-xs rotate-12 shadow-lg animate-float-slow" />
-
-            {/* Floating lower-left prism squircle */}
-            <div className="absolute bottom-8 left-4 w-20 h-20 rounded-2xl border border-[var(--border)]/25 bg-gradient-to-tr from-[var(--secondary)]/20 to-[var(--primary)]/10 backdrop-blur-xs -rotate-12 animate-float-reverse" />
-
-            {/* Central geometric market wave & candlestick sculpture */}
-            <div className="absolute inset-x-6 top-11 bottom-11 rounded-2xl border border-[var(--border)]/15 bg-gradient-to-br from-[var(--white)]/[0.09] via-[var(--white)]/[0.04] to-transparent backdrop-blur-sm p-5 flex items-end justify-center animate-float-slow" style={{ animationDelay: '1.2s' }}>
-              <svg viewBox="0 0 260 150" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="heroCurveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#38BDF8" />
-                    <stop offset="55%" stopColor="#34D399" />
-                    <stop offset="100%" stopColor="#A5B4FC" />
-                  </linearGradient>
-                  <linearGradient id="heroAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Horizontal baseline hairlines */}
-                <line x1="8" y1="36" x2="252" y2="36" stroke="white" strokeOpacity="0.08" strokeDasharray="3 5" />
-                <line x1="8" y1="78" x2="252" y2="78" stroke="white" strokeOpacity="0.08" strokeDasharray="3 5" />
-                <line x1="8" y1="120" x2="252" y2="120" stroke="white" strokeOpacity="0.1" />
-
-                {/* Geometric rising bars */}
-                <g className="animate-bar-float" style={{ animationDelay: '0s' }}>
-                  <rect x="24" y="92" width="12" height="32" rx="4" fill="#38BDF8" fillOpacity="0.35" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '0.4s' }}>
-                  <rect x="56" y="76" width="12" height="48" rx="4" fill="#38BDF8" fillOpacity="0.45" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '0.8s' }}>
-                  <rect x="88" y="84" width="12" height="40" rx="4" fill="#818CF8" fillOpacity="0.45" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '1.2s' }}>
-                  <rect x="120" y="60" width="12" height="64" rx="4" fill="#34D399" fillOpacity="0.55" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '1.6s' }}>
-                  <rect x="152" y="48" width="12" height="76" rx="4" fill="#34D399" fillOpacity="0.65" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '2s' }}>
-                  <rect x="184" y="56" width="12" height="68" rx="4" fill="#38BDF8" fillOpacity="0.55" />
-                </g>
-                <g className="animate-bar-float" style={{ animationDelay: '2.4s' }}>
-                  <rect x="216" y="28" width="12" height="96" rx="4" fill="#22D3EE" fillOpacity="0.75" />
-                </g>
-
-                {/* Area fill under trajectory */}
-                <path
-                  d="M 16 112 C 44 108, 62 72, 94 80 C 122 86, 136 44, 168 46 C 194 48, 212 22, 244 18 L 244 128 L 16 128 Z"
-                  fill="url(#heroAreaGrad)"
-                />
-
-                {/* Animated ascending curve */}
-                <path
-                  d="M 16 112 C 44 108, 62 72, 94 80 C 122 86, 136 44, 168 46 C 194 48, 212 22, 244 18"
-                  fill="none"
-                  stroke="url(#heroCurveGrad)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  className="animate-draw-line"
-                />
-
-                {/* Crisp geometric node diamond at curve peak */}
-                <rect
-                  x="239"
-                  y="13"
-                  width="10"
-                  height="10"
-                  rx="2.5"
-                  transform="rotate(45 244 18)"
-                  fill="#67E8F9"
-                  stroke="#0F1E3D"
-                  strokeWidth="2"
-                />
-              </svg>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-[13px] text-slate-300">
+              {['$0 commission on stocks', 'Same-day funding review', 'Demo account included'].map(
+                (item) => (
+                  <span key={item} className="inline-flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    {item}
+                  </span>
+                )
+              )}
             </div>
           </div>
 
-          {/* Hero Content */}
-          <div className="relative z-10 md:max-w-[58%] lg:max-w-[60%]">
-            <p className="text-xs sm:text-sm font-semibold text-[var(--primary)] tracking-wide">
-              Xena Broker <span aria-hidden="true">·</span> Commission-Free US Equities
-            </p>
-            <h1
-              className="mt-4 font-display font-extrabold text-[var(--foreground)] tracking-tight max-w-2xl"
-              style={{
-                fontSize: 'clamp(2.25rem, 4vw, 3.5rem)',
-                textWrap: 'balance',
-                animationDelay: '70ms',
-              }}
-            >
-              Stock trading and portfolio management built for clarity.
-            </h1>
-            <p
-              className="mt-5 text-base sm:text-[17px] text-[var(--muted-foreground)] leading-relaxed max-w-xl"
-              style={{ animationDelay: '140ms' }}
-            >
-              Select stocks live, inspect interactive TradingView charts, place market or limit orders from your trade desk, and manage cash funding from one clean workspace.
-            </p>
-
-            {/* Primary CTA Buttons */}
-            <div
-              className="animate-fade-up relative z-10 mt-8 pt-6 border-t border-[var(--border)]/15 md:max-w-[62%]"
-              style={{ animationDelay: '210ms' }}
-            >
-              {user ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('trade')}
-                    className="group inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] rounded-xl shadow-md hover:from-[var(--primary-100)] hover:via-[var(--secondary-100)] hover:to-[var(--accent-100)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    <span>Open Trade Terminal</span>
-                    <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('funding')}
-                    className="px-4.5 py-3 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--white)]/15 to-[var(--white)]/5 border border-[var(--white)]/20 rounded-xl hover:from-[var(--white)]/25 hover:to-[var(--white)]/10 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    Manage Funding
-                  </button>
+          {/* Dashboard preview */}
+          <div className="relative">
+            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-emerald-500/20 via-transparent to-sky-500/20 blur-2xl" />
+            <div className="relative rounded-2xl border border-white/12 bg-[#0B2237]/90 p-5 sm:p-6 shadow-2xl backdrop-blur">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Portfolio value
+                  </p>
+                  <p className="mt-1 font-mono text-2xl sm:text-3xl font-bold tabular-nums text-white">
+                    {formatCurrency(portfolioValue)}
+                  </p>
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    {formatPercent(previewPct)}
+                    <span className="text-slate-500 font-normal">today</span>
+                  </p>
                 </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('signup')}
-                    className="group inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] rounded-xl shadow-md hover:from-[var(--primary-100)] hover:via-[var(--secondary-100)] hover:to-[var(--accent-100)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    <span>Create Free Account</span>
-                    <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('login')}
-                    className="px-5 py-3 text-sm font-semibold text-[var(--primary)] bg-gradient-to-r from-[var(--white)]/15 to-[var(--white)]/5 border border-[var(--primary)]/20 rounded-xl hover:from-[var(--white)]/25 hover:to-[var(--primary)]/20 hover:text-[var(--primary-foreground)] transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    Log In
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('trade')}
-                    className="px-4 py-3 text-sm font-medium text-[var(--primary)] bg-gradient-to-r from-[var(--white)]/10 to-transparent border border-[var(--primary)]/20 rounded-xl hover:text-[var(--primary-foreground)] hover:from-[var(--primary)]/20 hover:to-[var(--primary)]/30 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    Preview Trade Desk
-                  </button>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Live
+                </span>
+              </div>
+
+              {previewStock && (
+                <div className="mt-5 rounded-xl border border-white/10 bg-[#081B2D] p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">{previewStock.symbol}</p>
+                      <p className="text-[11px] text-slate-400">{previewStock.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-sm font-bold tabular-nums text-white">
+                        {formatCurrency(previewStock.price)}
+                      </p>
+                      <p
+                        className={`text-[11px] font-semibold tabular-nums ${
+                          previewChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(previewPct)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <MiniSparkline
+                      data={previewStock.sparkline}
+                      isPositive={previewChange >= 0}
+                      width={280}
+                      height={56}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-3 space-y-2">
+                {featured.slice(1, 4).map((stock) => {
+                  const pct = ((stock.price - stock.previousClose) / stock.previousClose) * 100;
+                  const up = pct >= 0;
+                  return (
+                    <div
+                      key={stock.symbol}
+                      className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2"
+                    >
+                      <span className="text-xs font-semibold text-white">{stock.symbol}</span>
+                      <span className="flex items-center gap-3">
+                        <span className="font-mono text-xs tabular-nums text-slate-300">
+                          {formatCurrency(stock.price)}
+                        </span>
+                        <span
+                          className={`w-14 text-right font-mono text-[11px] font-semibold tabular-nums ${
+                            up ? 'text-emerald-400' : 'text-rose-400'
+                          }`}
+                        >
+                          {formatPercent(pct)}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {user && typeof cashBalance === 'number' && (
+                <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2.5">
+                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                    <Wallet className="w-3.5 h-3.5" /> Buying power
+                  </span>
+                  <span className="font-mono text-sm font-bold tabular-nums text-emerald-200">
+                    {formatCurrency(cashBalance)}
+                  </span>
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Ticker */}
+        <div className="relative border-t border-white/10 bg-[#04121F]">
+          <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-3 flex items-center gap-6 overflow-x-auto">
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              Markets
+            </span>
+            {ticker.map((item) => (
+              <span key={item.key} className="shrink-0 inline-flex items-baseline gap-2 text-xs">
+                <span className="font-semibold text-slate-300">{item.label}</span>
+                <span className="font-mono tabular-nums text-slate-400">{item.value}</span>
+                <span
+                  className={`font-mono text-[11px] font-semibold tabular-nums ${
+                    item.pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {formatPercent(item.pct)}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
       </section>
 
-      {/* How Xena Broker Works (01 / 02 / 03) */}
-      <section className="space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="animate-fade-up" style={{ animationDelay: '60ms' }}>
-            <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-[var(--foreground)] tracking-tight">
-              A direct workflow from funding to execution
+      {/* ============ STATS ============ */}
+      <section className="bg-white border-b border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-8 grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { value: `${stocks.length}+`, label: 'US stocks & ETFs' },
+            { value: '0%', label: 'Commission on equities' },
+            { value: 'T+0', label: 'Deposit review cycle' },
+            { value: '24/5', label: 'Platform availability' },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <p className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
+                {stat.value}
+              </p>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ WHY ============ */}
+      <section className="bg-[#F8FAFC] py-14 sm:py-18">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">
+              Why Xena Broker
+            </p>
+            <h2 className="mt-3 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+              A brokerage workspace that gets out of your way
             </h2>
-            <p className="text-sm sm:text-base text-[var(--muted-foreground)] mt-1.5">
-              Everything needed to fund your brokerage account, trade stocks, and monitor positions.
+            <p className="mt-3 text-sm sm:text-base text-slate-600">
+              Everything you need to fund, trade and manage a stock portfolio — without the
+              clutter of legacy platforms.
             </p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 01 - Funding */}
-          <div
-            className="group relative overflow-hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow)] flex flex-col hover:-translate-y-1 hover:shadow-[var(--elevated)] hover:border-[var(--primary)] transition-all duration-200 animate-fade-up"
-            style={{ animationDelay: '100ms' }}
-          >
-            <WorkflowCardImage
-              src={fundingVaultImg}
-              alt="Hardware security key and mobile brokerage funding workspace"
-              stepNumber="01"
-              badgeGradient="from-[var(--primary)] to-[var(--secondary)]"
-              fallbackGradient="from-[var(--primary-700)] to-[var(--secondary-700)]"
-              FallbackIcon={ShieldCheck}
-            />
-
-            <div className="relative flex-1 p-6 sm:p-7 flex flex-col justify-between">
-              <h3 className="font-display text-xl font-bold text-[var(--foreground)]">
-                Sign Up & Fund Cash
-              </h3>
-              <p className="mt-2.5 text-[15px] text-[var(--muted-foreground)] leading-relaxed">
-                Open your Xena Broker account and go straight to Funding to link a bank account, deposit USD, or withdraw settled cash at any time.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigate(user ? 'funding' : 'signup')}
-                className="group/btn relative z-10 mt-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[var(--primary)] bg-gradient-to-r from-[var(--primary-100)] to-[var(--secondary-100)]/80 border border-[var(--primary)]/80 rounded-xl hover:from-[var(--primary)] hover:to-[var(--secondary)] hover:text-[var(--primary-foreground)] hover:border-transparent transition-all duration-200 self-start cursor-pointer"
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {WHY_CARDS.map(({ icon: Icon, title, body }) => (
+              <div
+                key={title}
+                className="group rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"
               >
-                <span>{user ? 'Open Funding' : 'Create Account'}</span>
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-              </button>
-            </div>
-          </div>
-
-          {/* Card 02 - Trading */}
-          <div
-            className="group relative overflow-hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow)] flex flex-col hover:-translate-y-1 hover:shadow-[var(--elevated)] hover:border-[var(--secondary)] transition-all duration-200 animate-fade-up"
-            style={{ animationDelay: '180ms' }}
-          >
-            <WorkflowCardImage
-              src={tradingDeskImg}
-              alt="Dual-monitor equities trading workstation displaying live candlestick charts"
-              stepNumber="02"
-              badgeGradient="from-[var(--secondary)] to-[var(--secondary-light)]"
-              fallbackGradient="from-[var(--secondary-700)] to-[var(--secondary-200)]"
-              FallbackIcon={ArrowRight}
-            />
-
-            <div className="relative flex-1 p-6 sm:p-7 flex flex-col justify-between">
-              <h3 className="font-display text-xl font-bold text-[var(--foreground)]">
-                Select Stocks & Trade Live
-              </h3>
-              <p className="mt-2.5 text-[15px] text-[var(--muted-foreground)] leading-relaxed">
-                Inspect interactive TradingView candlestick and line charts right on the Trade workspace, and place market or limit orders in seconds.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigate('trade')}
-                className="group/btn relative z-10 mt-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[var(--secondary)] bg-gradient-to-r from-[var(--secondary-100)] to-[var(--secondary-light)]/80 border border-[var(--secondary)]/80 rounded-xl hover:from-[var(--secondary)] hover:to-[var(--secondary-light)] hover:text-[var(--primary-foreground)] hover:border-transparent transition-all duration-200 self-start cursor-pointer"
-              >
-                <span>Go to Trade Desk</span>
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-              </button>
-            </div>
-          </div>
-
-          {/* Card 03 - Portfolio */}
-          <div
-            className="group relative overflow-hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-[var(--shadow)] flex flex-col hover:-translate-y-1 hover:shadow-[var(--elevated)] hover:border-[var(--accent)] transition-all duration-200 animate-fade-up"
-            style={{ animationDelay: '260ms' }}
-          >
-            <WorkflowCardImage
-              src={portfolioStudioImg}
-              alt="Contemporary glass financial research studio and portfolio office"
-              stepNumber="03"
-              badgeGradient="from-[var(--accent)] to-[var(--primary)]"
-              fallbackGradient="from-[var(--accent-700)] to-[var(--primary-700)]"
-              FallbackIcon={Building2}
-            />
-
-            <div className="relative flex-1 p-6 sm:p-7 flex flex-col justify-between">
-              <h3 className="font-display text-xl font-bold text-[var(--foreground)]">
-                Track Holdings & Orders
-              </h3>
-              <p className="mt-2.5 text-[15px] text-[var(--muted-foreground)] leading-relaxed">
-                Review open working orders on the Trade desk, monitor real-time unrealized gains and KYC status in your Portfolio, and export CSVs.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigate('portfolio')}
-                className="group/btn relative z-10 mt-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[var(--accent)] bg-gradient-to-r from-[var(--accent-100)] to-[var(--primary-100)]/80 border border-[var(--accent)]/80 rounded-xl hover:from-[var(--accent)] hover:to-[var(--primary)] hover:text-[var(--primary-foreground)] hover:border-transparent transition-all duration-200 self-start cursor-pointer"
-              >
-                <span>View Portfolio</span>
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover/btn:translate-x-1" />
-              </button>
-            </div>
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 transition-colors group-hover:bg-emerald-500 group-hover:text-white">
+                  <Icon className="w-5 h-5" />
+                </span>
+                <h3 className="mt-4 text-[15px] font-bold text-slate-900">{title}</h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600">{body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Featured Stocks Section */}
-      <section className="space-y-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="w-3.5 h-3.5 rounded-sm rotate-45 bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] shrink-0"
-            />
-            <h2 className="font-display text-2xl font-extrabold text-[var(--foreground)] tracking-tight">
-              Popular US Equities
+      {/* ============ ACCOUNT TYPES ============ */}
+      <section className="bg-white py-14 sm:py-18 border-y border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-xl">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">
+                Account types
+              </p>
+              <h2 className="mt-3 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                Choose the account that fits your strategy
+              </h2>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <BadgeCheck className="w-4 h-4 text-emerald-500" />
+              Verified via profile &amp; KYC
+            </span>
+          </div>
+
+          <div className="mt-9 grid gap-5 lg:grid-cols-3">
+            {ACCOUNT_PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col rounded-2xl border p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl ${
+                  plan.highlight
+                    ? 'border-emerald-400 bg-[#06182B] text-white shadow-emerald-500/10'
+                    : 'border-slate-200 bg-white text-slate-900'
+                }`}
+              >
+                {plan.highlight && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-emerald-400 to-teal-300 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#04231A]">
+                    Most popular
+                  </span>
+                )}
+                <h3 className={`font-display text-xl font-bold ${plan.highlight ? 'text-white' : 'text-slate-900'}`}>
+                  {plan.name}
+                </h3>
+                <p className={`mt-1 text-xs font-medium ${plan.highlight ? 'text-slate-300' : 'text-slate-500'}`}>
+                  {plan.tagline}
+                </p>
+                <p className={`mt-4 font-display text-2xl font-extrabold ${plan.highlight ? 'text-white' : 'text-slate-900'}`}>
+                  {plan.min}
+                </p>
+
+                <ul className="mt-5 flex-1 space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-[13px] leading-snug">
+                      <CheckCircle2
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${
+                          plan.highlight ? 'text-emerald-400' : 'text-emerald-500'
+                        }`}
+                      />
+                      <span className={plan.highlight ? 'text-slate-300' : 'text-slate-600'}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate(plan.page)}
+                  className={`mt-6 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold transition-all cursor-pointer ${
+                    plan.highlight
+                      ? 'bg-gradient-to-r from-emerald-400 to-teal-300 text-[#04231A] hover:brightness-105'
+                      : 'border border-slate-300 bg-white text-slate-800 hover:border-slate-900 hover:bg-slate-900 hover:text-white'
+                  }`}
+                >
+                  {plan.cta}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ HOW IT WORKS ============ */}
+      <section className="bg-[#F8FAFC] py-14 sm:py-18">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">
+              How it works
+            </p>
+            <h2 className="mt-3 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+              From signup to your first position in minutes
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('markets')}
-            className="group inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-[var(--primary)] bg-gradient-to-r from-[var(--primary-100)] to-[var(--secondary-100)]/80 border border-[var(--primary)]/75 rounded-xl hover:from-[var(--primary)] hover:to-[var(--secondary)] hover:text-[var(--primary-foreground)] hover:border-transparent transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <span>Browse all {stocks.length} stocks</span>
-            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </button>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {featuredStocks.map((stock, idx) => {
-            const change = stock.price - stock.previousClose;
-            const changePct = (change / stock.previousClose) * 100;
-            const isUp = change >= 0;
-
-            return (
+          <div className="mt-9 grid gap-6 md:grid-cols-3">
+            {STEPS.map((step) => (
               <div
-                key={stock.symbol}
-                className={`group relative overflow-hidden bg-[var(--card)] border border-[var(--border)]/90 rounded-2xl p-5 sm:p-6 shadow-[var(--shadow)] flex items-center justify-between gap-4 hover:border-[var(--primary)] hover:shadow-[var(--elevated)] transition-all duration-200 animate-fade-up ${
-                  isUp
-                    ? 'from-[var(--white)] via-[var(--white)] to-emerald-50/45'
-                    : 'from-[var(--white)] via-[var(--white)] to-rose-50/40'
-                }`}
-                style={{ animationDelay: `${80 + idx * 55}ms` }}
+                key={step.n}
+                className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg"
               >
-                {/* Corner geometric facet */}
-                <div
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-3xl rotate-12 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-45 ${
-                    isUp
-                      ? 'bg-gradient-to-br from-emerald-400/15 to-teal-500/5'
-                      : 'bg-gradient-to-br from-rose-400/15 to-red-500/5'
-                    }`}
-                />
-
-                <div className="relative z-10 min-w-0">
-                  <div className="text-xs font-medium text-[var(--muted-foreground)]">
-                    {stock.exchange} <span aria-hidden="true">·</span> {stock.sector}
-                  </div>
-                  <div className="mt-1 font-display text-lg font-extrabold text-[var(--foreground)]">
-                    {stock.symbol}
-                  </div>
-                  <div className="text-xs sm:text-[13px] text-[var(--muted-foreground)] truncate max-w-[160px]">
-                    {stock.name}
-                  </div>
-                  <div className="mt-3 font-mono tabular-nums text-xl font-bold text-[var(--foreground)]">
-                    {formatCurrency(stock.price)}
-                  </div>
-                  <div
-                    className={`text-xs sm:text-[13px] font-mono tabular-nums font-semibold ${
-                      isUp ? 'text-[var(--secondary)]' : 'text-[var(--destructive)]'
-                    }`}
-                  >
-                    {formatSignedCurrency(change)} ({formatPercent(changePct)})
-                  </div>
+                <div className="relative h-44 overflow-hidden bg-slate-900">
+                  <img
+                    src={step.img}
+                    alt={step.title}
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full object-cover opacity-90 transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#06182B] via-[#06182B]/30 to-transparent" />
+                  <span className="absolute bottom-3 left-4 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400 font-mono text-xs font-bold text-[#04231A]">
+                    {step.n}
+                  </span>
                 </div>
-
-                <div className="relative z-10 flex flex-col items-end justify-between gap-4 shrink-0">
-                  <MiniSparkline data={stock.sparkline} isPositive={isUp} width={96} height={36} />
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="text-[15px] font-bold text-slate-900">{step.title}</h3>
+                  <p className="mt-2 flex-1 text-[13px] leading-relaxed text-slate-600">{step.body}</p>
                   <button
                     type="button"
-                    onClick={() => onTradeSymbol(stock.symbol, 'buy')}
-                    className="px-4 py-2 text-xs sm:text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] rounded-xl shadow-2xs hover:from-[var(--primary-500)] hover:via-[var(--secondary-500)] hover:to-[var(--accent-500)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer"
+                    onClick={() => onNavigate(user && step.page === 'signup' ? 'funding' : step.page)}
+                    className="mt-4 inline-flex items-center gap-1 self-start text-[13px] font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
                   >
-                    Trade {stock.symbol}
+                    {step.cta}
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ MARKETS ============ */}
+      <section className="bg-white py-14 sm:py-18 border-t border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">
+                Markets
+              </p>
+              <h2 className="mt-3 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                Popular US equities
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('markets')}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-800 transition-colors hover:border-slate-900 hover:bg-slate-900 hover:text-white cursor-pointer"
+            >
+              Browse all {stocks.length} stocks
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((stock) => {
+              const change = stock.price - stock.previousClose;
+              const pct = (change / stock.previousClose) * 100;
+              const up = change >= 0;
+              return (
+                <div
+                  key={stock.symbol}
+                  className="rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium text-slate-400">
+                        {stock.exchange} · {stock.sector}
+                      </p>
+                      <p className="mt-0.5 font-display text-lg font-extrabold text-slate-900">
+                        {stock.symbol}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">{stock.name}</p>
+                    </div>
+                    <MiniSparkline data={stock.sparkline} isPositive={up} width={92} height={34} />
+                  </div>
+
+                  <div className="mt-4 flex items-end justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xl font-bold tabular-nums text-slate-900">
+                        {formatCurrency(stock.price)}
+                      </p>
+                      <p
+                        className={`text-xs font-semibold tabular-nums ${
+                          up ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
+                      >
+                        {formatPercent(pct)} today
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onTradeSymbol(stock.symbol, 'buy')}
+                      className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-600 cursor-pointer"
+                    >
+                      Trade
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ AWARDS ============ */}
+      <section className="bg-[#F8FAFC] py-14 sm:py-18 border-t border-slate-200">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600">
+                Awards &amp; recognition
+              </p>
+              <h2 className="mt-3 font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                Xena Broker, recognised by the industry
+              </h2>
+              <p className="mt-3 text-sm sm:text-base text-slate-600">
+                Independent panels and trading publications have recognised our platform for
+                execution quality, product design and client service.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-white px-5 py-4 shadow-sm">
+              <div>
+                <div className="flex items-center gap-0.5">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="mt-1.5 text-sm font-extrabold text-slate-900">4.9 / 5</p>
+                <p className="text-[11px] font-medium text-slate-500">Average client rating</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {AWARDS.map((award) => (
+              <div
+                key={`${award.year}-${award.title}`}
+                className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-amber-300 hover:shadow-lg"
+              >
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 opacity-70 transition-opacity group-hover:opacity-100"
+                />
+                <div className="flex items-start gap-4">
+                  <span className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-amber-50 ring-1 ring-amber-200">
+                    <Trophy className="h-5 w-5 text-amber-600" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
+                        {award.year}
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-400">
+                        {award.category}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-sm font-bold leading-snug text-slate-900">
+                      {award.title}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-500">{award.org}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-3 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: ShieldCheck, label: 'Segregated client cash' },
+              { icon: Lock, label: 'Bank-grade encryption' },
+              { icon: BadgeCheck, label: 'KYC verified accounts' },
+              { icon: CreditCard, label: 'Transparent fee ledger' },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="text-[13px] font-semibold text-slate-700">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ FINAL CTA ============ */}
+      <section className="bg-[#06182B] text-white">
+        <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-12 sm:py-16 grid gap-8 lg:grid-cols-[1.4fr_1fr] items-center">
+          <div>
+            <h2 className="font-display text-2xl sm:text-4xl font-extrabold tracking-tight">
+              Ready to start trading?
+            </h2>
+            <p className="mt-3 max-w-xl text-sm sm:text-base text-slate-300">
+              Open an account, submit a deposit for review and place your first order — all from
+              one dashboard.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 lg:justify-end">
+            <button
+              type="button"
+              onClick={() => onNavigate(user ? 'funding' : 'signup')}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 px-6 py-3.5 text-sm font-bold text-[#04231A] transition-all hover:-translate-y-0.5 cursor-pointer"
+            >
+              <CreditCard className="w-4 h-4" />
+              {user ? 'Fund your account' : 'Open a free account'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('markets')}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-white/10 cursor-pointer"
+            >
+              <Globe2 className="w-4 h-4" />
+              Explore markets
+            </button>
+          </div>
         </div>
       </section>
     </div>

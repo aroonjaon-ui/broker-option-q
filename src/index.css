@@ -406,3 +406,73 @@
    ========================================== */
 
 .min-h-screen { min-height: 100vh; }
+
+/* ==========================================
+   Design tokens referenced across the UI
+   (previously undefined -> transparent
+   gradients and invisible buttons)
+   ========================================== */
+
+:root {
+  --white: #FFFFFF;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --elevated: 0 12px 28px -10px rgba(15, 23, 42, 0.18), 0 4px 10px -6px rgba(15, 23, 42, 0.08);
+
+  --primary-50: #EFF6FF;
+  --primary-100: #DBEAFE;
+  --primary-400: #60A5FA;
+  --primary-500: #3B82F6;
+  --primary-700: #1D4ED8;
+
+  --secondary-50: #ECFDF5;
+  --secondary-100: #D1FAE5;
+  --secondary-200: #A7F3D0;
+  --secondary-400: #34D399;
+  --secondary-500: #10B981;
+  --secondary-700: #047857;
+
+  --accent-100: #EDE9FE;
+  --accent-500: #8B5CF6;
+  --accent-700: #6D28D9;
+
+  --destructive-50: #FEF2F2;
+  --destructive-100: #FEE2E2;
+  --destructive-fg: #EF4444;
+  --success-fg: #10B981;
+
+  /* Chart surfaces (dark) */
+  --chart-header-bg: #131722;
+  --chart-header-border: #2A2E39;
+  --chart-control-bg: #1E222D;
+  --chart-control-active: #2962FF;
+  --chart-control-active-fg: #FFFFFF;
+  --chart-control-inactive: #B2B5BE;
+  --chart-text: #D1D4DC;
+
+  /* Dialogs */
+  --dialog-bg: #FFFFFF;
+  --dialog-blur: 12px;
+
+  /* Modal extras */
+  --modal-bg-hover: #F8FAFC;
+  --modal-bonus-fg: #B45309;
+  --modal-button-alt: #F1F5F9;
+  --modal-button-bg: #3B82F6;
+  --modal-button-bg-hover: #2563EB;
+  --modal-button-fg: #FFFFFF;
+  --modal-card-bg2: #FFFFFF;
+  --modal-card-border: #E5E7EB;
+  --modal-header-bg: #0F172A;
+  --modal-header-bg2: #1E293B;
+  --modal-header-fg: #FFFFFF;
+  --modal-icon: #3B82F6;
+  --modal-icon-bg: #EFF6FF;
+  --modal-reward-bg: #FFFBEB;
+  --modal-reward-fg: #B45309;
+  --modal-reward-fg2: #92400E;
+  --modal-success-bg2: #ECFDF3;
+  --modal-success-border: #10B981;
+  --modal-text-hover: #0F172A;
+  --modal-wheel-bg: #F1F5F9;
+}

@@ -5,7 +5,9 @@ export type PageId =
   | 'markets'
   | 'funding'
   | 'login'
-  | 'signup';
+  | 'signup'
+  | 'complete-profile'
+  | 'admin';
 
 export type KycStatus = 'unverified' | 'verified';
 

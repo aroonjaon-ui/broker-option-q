@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TopNav from './components/TopNav';
 import WithdrawalToastFeed from './components/WithdrawalToastFeed';
 import PlatformModals, { AppModalKind } from './components/PlatformModals';
@@ -9,6 +9,7 @@ import TradePage from './pages/TradePage';
 import PortfolioPage from './pages/PortfolioPage';
 import MarketsPage from './pages/MarketsPage';
 import FundingPage from './pages/FundingPage';
+import AdminPage from './pages/AdminPage';
 import {
   INITIAL_INDICES,
   INITIAL_STOCKS,
@@ -28,6 +29,19 @@ import {
   UserAccount,
 } from './types/broker';
 import { formatCurrency } from './utils/formatters';
+import {
+  ensureCloudUser,
+  getSessionUser,
+  pullSnapshot,
+  pushBalance,
+  pushPositions,
+  pushProfile,
+  signInCloud,
+  signOutCloud,
+  signUpCloud,
+  submitDepositRequest,
+  submitWithdrawalRequest,
+} from './cloud';
 
 const STORAGE_KEY = 'xena_broker_state_v1';
 const USER_STORAGE_KEY = 'xena_broker_user_v1';
@@ -270,7 +284,58 @@ export default function App() {
   const [credentials, setCredentials] = useState<StoredCredential[]>(loadSavedCredentials);
   const [kyc, setKyc] = useState<KycProfile | null>(loadSavedKyc);
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
-  
+  const cloudUserIdRef = useRef<string | null>(null);
+  const lastLocalMoneyChangeRef = useRef<number>(0);
+
+  // Deep-link straight into the admin console with #admin
+  useEffect(() => {
+    if (window.location.hash.toLowerCase() === '#admin') {
+      setActivePage('admin');
+    }
+  }, []);
+
+  // Restore an existing Supabase session on first load and hydrate from the cloud
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const supaUser = await getSessionUser();
+      if (!supaUser || cancelled) return;
+
+      cloudUserIdRef.current = supaUser.id;
+      await ensureCloudUser({ userId: supaUser.id, email: supaUser.email ?? '' });
+      const snap = await pullSnapshot(supaUser.id);
+      if (!snap || cancelled) return;
+
+      const fullName = [snap.profile?.first_name, snap.profile?.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+      setUser(
+        (prev): UserAccount => ({
+          id: supaUser.id,
+          name: fullName || prev?.name || (supaUser.email ?? '').split('@')[0] || 'Trader',
+          email: supaUser.email ?? prev?.email ?? '',
+          accountNumber: prev?.accountNumber ?? `XN-${supaUser.id.slice(0, 6).toUpperCase()}`,
+          createdAt: prev?.createdAt ?? new Date().toISOString(),
+          hasCompletedProfile:
+            snap.profile?.has_completed_profile ?? prev?.hasCompletedProfile ?? false,
+        })
+      );
+
+      setBroker((prev) => ({
+        ...prev,
+        cashBalance: snap.cashBalance,
+        positions: snap.positions,
+      }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const enqueueModals = useCallback((kinds: AppModalKind[]) => {
     setModalQueue((prev) => {
       const next = [...prev];
@@ -428,20 +493,72 @@ export default function App() {
     return broker.cashBalance + equitiesVal;
   }, [stocks, broker.positions, broker.cashBalance]);
 
+  // Mirror cash + positions to Supabase so the cloud stays the source of truth
+  useEffect(() => {
+    const uid = cloudUserIdRef.current;
+    if (!uid) return;
+
+    const timer = window.setTimeout(() => {
+      void pushBalance(uid, broker.cashBalance, reservedCash);
+      void pushPositions(uid, broker.positions);
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [broker.cashBalance, broker.positions, reservedCash]);
+
+  // Pick up admin balance adjustments without clobbering a fresh local change
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      const uid = cloudUserIdRef.current;
+      if (!uid) return;
+      if (Date.now() - lastLocalMoneyChangeRef.current < 12000) return;
+
+      const snap = await pullSnapshot(uid);
+      if (!snap) return;
+
+      setBroker((prev) =>
+        Math.abs(prev.cashBalance - snap.cashBalance) > 0.009
+          ? { ...prev, cashBalance: snap.cashBalance }
+          : prev
+      );
+    }, 20000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   const navigateTo = useCallback((page: PageId) => {
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleSignup = useCallback(
-    (name: string, email: string, password: string): { ok: boolean; message?: string } => {
+    async (email: string, password: string): Promise<{ ok: boolean; message?: string }> => {
       const exists = credentials.some((c) => c.user.email.toLowerCase() === email);
       if (exists) {
         return { ok: false, message: 'An account with this email already exists. Please log in.' };
       }
+
+      const displayName = email
+        .split('@')[0]
+        .replace(/[._-]+/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      // Create the account in Supabase Auth (so data lives in the cloud)
+      const cloud = await signUpCloud(email, password);
+      const cloudUserId = (cloud as { userId?: string | null }).userId ?? null;
+
+      if (!cloud.ok && /already registered|already exists/i.test(cloud.message ?? '')) {
+        return { ok: false, message: 'That email is already registered. Please log in.' };
+      }
+
+      if (cloudUserId) {
+        cloudUserIdRef.current = cloudUserId;
+        await ensureCloudUser({ userId: cloudUserId, email, name: displayName });
+      }
+
       const newUser: UserAccount = {
-        id: `usr-${Date.now()}`,
-        name,
+        id: cloudUserId ?? `usr-${Date.now()}`,
+        name: displayName,
         email,
         accountNumber: `XN-${Math.floor(100000 + Math.random() * 899999)}`,
         createdAt: new Date().toISOString(),
@@ -467,6 +584,13 @@ export default function App() {
 
   const handleCreditBonus = useCallback(
     (amount: number, description: string, reference: string) => {
+      // The welcome bonus is granted once by Supabase (claim_signup_bonus).
+      // Skip the local credit so cloud users don't get it twice.
+      if (reference === 'XN-BONUS500' && cloudUserIdRef.current) {
+        return;
+      }
+
+      lastLocalMoneyChangeRef.current = Date.now();
       const nowIso = new Date().toISOString();
       setBroker((prev) => {
         const nextCash = Number((prev.cashBalance + amount).toFixed(2));
@@ -492,24 +616,69 @@ export default function App() {
   );
 
   const handleLogin = useCallback(
-    (email: string, password: string): { ok: boolean; message?: string } => {
-      const match = credentials.find(
+    async (email: string, password: string): Promise<{ ok: boolean; message?: string }> => {
+      const local = credentials.find(
         (c) => c.user.email.toLowerCase() === email && c.password === password
       );
-      if (!match) {
-        return {
-          ok: false,
-          message: 'Invalid email or password. Try the demo account below or sign up.',
+
+      // Sign in to Supabase first so cloud sync + persistence are active
+      const cloud = await signInCloud(email, password);
+
+      if (cloud.ok && cloud.userId) {
+        cloudUserIdRef.current = cloud.userId;
+        await ensureCloudUser({
+          userId: cloud.userId,
+          email,
+          name: local?.user.name,
+        });
+        const snap = await pullSnapshot(cloud.userId);
+
+        const merged: UserAccount = {
+          id: cloud.userId,
+          name:
+            local?.user.name ||
+            [snap?.profile?.first_name, snap?.profile?.last_name].filter(Boolean).join(' ').trim() ||
+            email.split('@')[0],
+          email,
+          accountNumber:
+            local?.user.accountNumber ?? `XN-${cloud.userId.slice(0, 6).toUpperCase()}`,
+          createdAt: local?.user.createdAt ?? new Date().toISOString(),
+          hasCompletedProfile:
+            snap?.profile?.has_completed_profile ?? local?.user.hasCompletedProfile ?? false,
         };
+
+        setUser(merged);
+        setCredentials((prev) => {
+          const idx = prev.findIndex((c) => c.user.email.toLowerCase() === email);
+          if (idx >= 0) {
+            return prev.map((c, i) => (i === idx ? { ...c, user: merged, password } : c));
+          }
+          return [...prev, { user: merged, password }];
+        });
+
+        if (snap) {
+          setBroker((prev) => ({
+            ...prev,
+            cashBalance: snap.cashBalance,
+            positions: snap.positions,
+          }));
+        }
+
+        navigateTo(merged.hasCompletedProfile ? 'funding' : 'complete-profile');
+        return { ok: true };
       }
-      setUser(match.user);
-      // Check if profile is complete, if not redirect to CompleteProfile
-      if (!match.hasCompletedProfile) {
-        navigateTo('complete-profile');
-      } else {
-        navigateTo('funding');
+
+      // Fall back to the local account list (demo account, offline use)
+      if (local) {
+        setUser(local.user);
+        navigateTo(local.user.hasCompletedProfile ? 'funding' : 'complete-profile');
+        return { ok: true };
       }
-      return { ok: true };
+
+      return {
+        ok: false,
+        message: cloud.message ?? 'Invalid email or password. Try the demo account below or sign up.',
+      };
     },
     [credentials, navigateTo]
   );
@@ -528,6 +697,8 @@ export default function App() {
   }, [credentials, navigateTo]);
 
   const handleLogout = useCallback(() => {
+    void signOutCloud();
+    cloudUserIdRef.current = null;
     setUser(null);
     navigateTo('home');
   }, [navigateTo]);
@@ -542,6 +713,17 @@ export default function App() {
         );
         return updated;
       });
+
+      const uid = cloudUserIdRef.current;
+      if (uid) {
+        const [firstName, ...rest] = name.trim().split(/\s+/);
+        void pushProfile(uid, {
+          email,
+          firstName: firstName ?? '',
+          lastName: rest.join(' '),
+          hasCompletedProfile: true,
+        });
+      }
     },
     []
   );
@@ -719,6 +901,18 @@ export default function App() {
           ],
         }));
 
+        const uid = cloudUserIdRef.current;
+        if (uid) {
+          lastLocalMoneyChangeRef.current = Date.now();
+          void submitDepositRequest({
+            userId: uid,
+            amount: params.amount,
+            method: bankRef,
+            reference: 'XN-DEP',
+            notes: 'Custody deposit transfer',
+          });
+        }
+
         return {
           ok: true,
           message: `Deposit of ${formatCurrency(params.amount)} submitted — Pending Under Review. Funds will be credited once approved by admin.`,
@@ -736,6 +930,17 @@ export default function App() {
       const nowIso = new Date().toISOString();
       const delta = -params.amount;
 
+      const uid = cloudUserIdRef.current;
+      if (uid) {
+        lastLocalMoneyChangeRef.current = Date.now();
+        void submitWithdrawalRequest({
+          userId: uid,
+          amount: params.amount,
+          method: bankRef,
+          reference: 'XN-WDR',
+        });
+      }
+
       setBroker((prev) => {
         const nextCash = Number((prev.cashBalance + delta).toFixed(2));
         return {
@@ -750,7 +955,7 @@ export default function App() {
               reference: bankRef,
               timestamp: nowIso,
               balanceAfter: nextCash,
-              status: 'completed',
+              status: 'pending',
             },
             ...prev.ledger,
           ],
@@ -759,7 +964,7 @@ export default function App() {
 
       return {
         ok: true,
-        message: `Withdrew ${formatCurrency(params.amount)} to ${bankRef}.`,
+        message: `Withdrawal of ${formatCurrency(params.amount)} to ${bankRef} submitted — pending admin approval.`,
       };
     },
     [broker.bankAccounts, broker.cashBalance, reservedCash]
@@ -843,25 +1048,25 @@ export default function App() {
             onLogin={handleLogin}
             onSignup={handleSignup}
             onDemoLogin={handleDemoLogin}
-            onCompleteProfile={formData => {
-              handleUpdateProfile(`${formData.firstName} ${formData.lastName}`, user?.email ?? '');
-              navigateTo('home');
-            }}
-            showCompleteProfile={activePage === 'signup'}
           />
         )}
 
-        {/* If user exists but hasn't completed profile, show CompleteProfile */}
-        {user && !user.hasCompletedProfile && activePage !== 'complete-profile' && (
+        {/* Dedicated profile completion step (never overlays other pages) */}
+        {activePage === 'complete-profile' && (
           <CompleteProfile
             initialEmail={user?.email}
-            onComplete={formData => {
-              handleUpdateProfile(`${formData.firstName} ${formData.lastName}`, user.email);
-              navigateTo('home');
+            onComplete={(formData) => {
+              handleUpdateProfile(
+                `${formData.firstName} ${formData.lastName}`.trim(),
+                formData.email || user?.email || ''
+              );
+              navigateTo('funding');
             }}
             onSkip={() => navigateTo('home')}
           />
         )}
+
+        {activePage === 'admin' && <AdminPage onExit={() => navigateTo('home')} />}
 
         {activePage === 'trade' && (
           <TradePage
@@ -887,7 +1092,11 @@ export default function App() {
           <PortfolioPage
             user={user}
             kyc={kyc}
-            onSaveKyc={setKyc}
+            onSaveKyc={(next) => {
+              setKyc(next);
+              const uid = cloudUserIdRef.current;
+              if (uid) void pushProfile(uid, { hasCompletedProfile: next.status === 'verified' });
+            }}
             stocks={stocks}
             positions={broker.positions}
             cashBalance={broker.cashBalance}
@@ -980,6 +1189,13 @@ export default function App() {
               className="hover:text-white transition-colors cursor-pointer"
             >
               About Platform
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateTo('admin')}
+              className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Admin
             </button>
             {!user && (
               <>

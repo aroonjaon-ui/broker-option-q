@@ -18,6 +18,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Also provided service role key for admin operations
 const SUPABASE_SERVICE_ROLE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jdXd1ZWNtbXB6dHFrc3FzbXNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NDc0MzM5MiwiZXhwIjoyMTEwMzE5MzkyfQ.qTEvMTmeyPrqWYvwRs8P4gAVzOiR0RVXyR5mZPIRz_Y';
 
+export { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE };
+
 // ============================================================
 // Automatic Configuration Detection
 // ============================================================

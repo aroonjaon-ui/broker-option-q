@@ -1,22 +1,12 @@
 import { useState } from 'react';
 import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { UserAccount } from '../types/broker';
-import CompleteProfile from '../pages/CompleteProfile';
 
 interface AuthPageProps {
   mode: 'login' | 'signup';
   onSwitchMode: (mode: 'login' | 'signup') => void;
-  onLogin: (email: string, password: string) => { ok: boolean; message?: string };
-  onSignup: (email: string, password: string) => { ok: boolean; message?: string };
+  onLogin: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  onSignup: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   onDemoLogin: () => void;
-  onCompleteProfile: (formData: {
-    firstName: string;
-    lastName: string;
-    country: string;
-    email: string;
-    termsAccepted: boolean;
-  }) => void;
-  showCompleteProfile: boolean;
 }
 
 export default function AuthPage({
@@ -25,15 +15,13 @@ export default function AuthPage({
   onLogin,
   onSignup,
   onDemoLogin,
-  onCompleteProfile,
-  showCompleteProfile,
 }: AuthPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -53,12 +41,12 @@ export default function AuthPage({
         setError('Please acknowledge the brokerage account agreement to continue.');
         return;
       }
-      const res = onSignup(trimmedEmail, password);
+      const res = await onSignup(trimmedEmail, password);
       if (!res.ok && res.message) {
         setError(res.message);
       }
     } else {
-      const res = onLogin(trimmedEmail, password);
+      const res = await onLogin(trimmedEmail, password);
       if (!res.ok && res.message) {
         setError(res.message);
       }
@@ -228,14 +216,6 @@ export default function AuthPage({
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {showCompleteProfile && (
-          <CompleteProfile
-            email={email}
-            onComplete={onCompleteProfile}
-            onSkip={onSwitchMode}
-          />
-        )}
 
         <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
           <button
