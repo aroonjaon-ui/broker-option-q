@@ -9,6 +9,7 @@ import TradePage from './pages/TradePage';
 import PortfolioPage from './pages/PortfolioPage';
 import MarketsPage from './pages/MarketsPage';
 import FundingPage from './pages/FundingPage';
+import { supabase, useAuth, useProfile, hasCompletedProfile, setHasCompletedProfile, getCurrentUser } from './supabaseClient';
 import {
   INITIAL_INDICES,
   INITIAL_STOCKS,
@@ -270,6 +271,9 @@ export default function App() {
   const [credentials, setCredentials] = useState<StoredCredential[]>(loadSavedCredentials);
   const [kyc, setKyc] = useState<KycProfile | null>(loadSavedKyc);
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
+  
+  // Supabase auth state
+  const { user: supaUser, loading } = useAuth();
 
   const enqueueModals = useCallback((kinds: AppModalKind[]) => {
     setModalQueue((prev) => {
