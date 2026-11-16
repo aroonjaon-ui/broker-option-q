@@ -5,14 +5,22 @@ import {
   BadgeCheck,
   BookOpen,
   Check,
+  FileText,
+  Headset,
+  Landmark,
   Loader2,
+  Lock,
   LogOut,
+  MessageCircle,
   Minus,
   Plus,
   RefreshCw,
   Search,
+  Send,
   Settings,
   Shield,
+  Snowflake,
+  Unlock,
   Users,
   Wallet,
   X,
@@ -20,21 +28,41 @@ import {
 import {
   AdminLedgerRow,
   AdminUserRow,
+  ChatMessage,
+  ChatThread,
+  CustodySettings,
+  DEFAULT_CUSTODY_SETTINGS,
   adminAdjustBalance,
   adminApproveDeposit,
   adminCompleteWithdrawal,
+  adminFetchChatThread,
+  adminGetKycDocument,
   adminGetSettings,
+  adminListChatThreads,
   adminListLedger,
   adminListUsers,
   adminLogin,
+  adminMarkChatRead,
   adminRejectDeposit,
+  adminSendChatReply,
+  adminSetCustodySettings,
+  adminSetFrozen,
   adminSetKyc,
   adminSetWelcomeBonus,
   adminStats,
+  getCustodySettings,
 } from '../cloud';
 import { formatCurrency } from '../utils/formatters';
 
-type AdminTab = 'overview' | 'users' | 'deposits' | 'withdrawals' | 'ledger' | 'settings';
+type AdminTab =
+  | 'overview'
+  | 'users'
+  | 'kyc'
+  | 'deposits'
+  | 'withdrawals'
+  | 'support'
+  | 'ledger'
+  | 'settings';
 
 interface AdminPageProps {
   onExit: () => void;
@@ -54,8 +82,10 @@ const SESSION_KEY = 'xena_admin_session_v1';
 const TABS: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: 'overview', label: 'Overview', icon: Shield },
   { id: 'users', label: 'Users', icon: Users },
+  { id: 'kyc', label: 'KYC', icon: BadgeCheck },
   { id: 'deposits', label: 'Deposits', icon: ArrowDownToLine },
   { id: 'withdrawals', label: 'Withdrawals', icon: ArrowUpFromLine },
+  { id: 'support', label: 'Support', icon: MessageCircle },
   { id: 'ledger', label: 'Ledger', icon: BookOpen },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -99,6 +129,7 @@ export default function AdminPage({ onExit }: AdminPageProps) {
   const [adjustFor, setAdjustFor] = useState<AdminUserRow | null>(null);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+  const [adjustLabel, setAdjustLabel] = useState('Trade profit');
   const [adjustBusy, setAdjustBusy] = useState(false);
 
   const [bonusAmount, setBonusAmount] = useState('500');
@@ -108,6 +139,26 @@ export default function AdminPage({ onExit }: AdminPageProps) {
   const [ledgerType, setLedgerType] = useState('all');
   const [ledgerStatus, setLedgerStatus] = useState('all');
 
+  const [kycReview, setKycReview] = useState<AdminUserRow | null>(null);
+  const [kycDoc, setKycDoc] = useState<string | null>(null);
+  const [kycDocName, setKycDocName] = useState<string | null>(null);
+  const [kycDocBusy, setKycDocBusy] = useState(false);
+  const [kycReason, setKycReason] = useState('');
+  const [kycBusy, setKycBusy] = useState(false);
+
+  const [freezeFor, setFreezeFor] = useState<AdminUserRow | null>(null);
+  const [freezeReason, setFreezeReason] = useState('');
+  const [freezeBusy, setFreezeBusy] = useState(false);
+
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [threadUserId, setThreadUserId] = useState<string | null>(null);
+  const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [replyBusy, setReplyBusy] = useState(false);
+
+  const [custodyForm, setCustodyForm] = useState<CustodySettings>(DEFAULT_CUSTODY_SETTINGS);
+  const [custodyBusy, setCustodyBusy] = useState(false);
+
   const flash = useCallback((kind: 'ok' | 'error', text: string) => {
     setNotice({ kind, text });
     window.setTimeout(() => setNotice(null), 4500);
@@ -115,29 +166,51 @@ export default function AdminPage({ onExit }: AdminPageProps) {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [statsRes, usersRes, ledgerRes, settingsRes] = await Promise.all([
+    const [statsRes, usersRes, ledgerRes, settingsRes, threadsRes, custodyRes] = await Promise.all([
       adminStats(),
       adminListUsers(),
       adminListLedger(),
       adminGetSettings(),
+      adminListChatThreads(),
+      getCustodySettings(),
     ]);
     setLoading(false);
 
     if (statsRes.ok) setStats(statsRes.stats);
     if (usersRes.ok) setUsers(usersRes.users);
     if (ledgerRes.ok) setLedger(ledgerRes.rows);
+    if (threadsRes.ok) setThreads(threadsRes.threads);
+    if (custodyRes) setCustodyForm(custodyRes);
     if (settingsRes.ok) {
       setBonusAmount(String(settingsRes.welcomeBonus));
       setBonusEnabled(settingsRes.welcomeBonusEnabled);
     }
 
-    const firstError = [statsRes, usersRes, ledgerRes, settingsRes].find((r) => !r.ok);
+    const firstError = [statsRes, usersRes, ledgerRes, settingsRes, threadsRes].find((r) => !r.ok);
     if (firstError && 'message' in firstError) flash('error', firstError.message as string);
   }, [flash]);
 
   useEffect(() => {
     if (authed) void refresh();
   }, [authed, refresh]);
+
+  // Live support desk polling while the Support tab is open.
+  useEffect(() => {
+    if (!authed || tab !== 'support') return;
+    const tick = async () => {
+      const list = await adminListChatThreads();
+      if (list.ok) setThreads(list.threads);
+      if (threadUserId) {
+        const t = await adminFetchChatThread(threadUserId);
+        if (t.ok) setThreadMessages(t.messages);
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => {
+      void tick();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [authed, tab, threadUserId]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +245,7 @@ export default function AdminPage({ onExit }: AdminPageProps) {
     setAdjustFor(user);
     setAdjustAmount('');
     setAdjustReason('');
+    setAdjustLabel('Trade profit');
   };
 
   const submitAdjust = async (sign: 1 | -1) => {
@@ -181,8 +255,10 @@ export default function AdminPage({ onExit }: AdminPageProps) {
       flash('error', 'Enter an amount greater than zero.');
       return;
     }
+    const label = adjustLabel.trim() || (sign > 0 ? 'Manual credit' : 'Manual debit');
+    const note = adjustReason.trim() ? `${label} · ${adjustReason.trim()}` : label;
     setAdjustBusy(true);
-    const res = await adminAdjustBalance(adjustFor.userId, sign * amount, adjustReason);
+    const res = await adminAdjustBalance(adjustFor.userId, sign * amount, note);
     setAdjustBusy(false);
 
     if (!res.ok) {
@@ -191,7 +267,7 @@ export default function AdminPage({ onExit }: AdminPageProps) {
     }
     flash(
       'ok',
-      `${sign > 0 ? 'Increased' : 'Decreased'} ${adjustFor.email} by ${formatCurrency(amount)}. New balance ${formatCurrency(res.newBalance)}.`
+      `${sign > 0 ? 'Credited' : 'Debited'} ${formatCurrency(amount)} ${sign > 0 ? 'to' : 'from'} ${adjustFor.email || 'user'} — ${label}. New balance ${formatCurrency(res.newBalance)}.`
     );
     setAdjustFor(null);
     await refresh();
@@ -219,14 +295,98 @@ export default function AdminPage({ onExit }: AdminPageProps) {
     await refresh();
   };
 
-  const handleKyc = async (user: AdminUserRow) => {
-    const res = await adminSetKyc(user.userId, !user.kycVerified);
+  const openKycReview = async (user: AdminUserRow) => {
+    setKycReview(user);
+    setKycDoc(null);
+    setKycDocName(null);
+    setKycReason('');
+    setKycDocBusy(true);
+    const res = await adminGetKycDocument(user.userId);
+    setKycDocBusy(false);
+    if (res.ok) {
+      setKycDoc(res.document);
+      setKycDocName(res.name);
+    } else {
+      flash('error', res.message);
+    }
+  };
+
+  const reviewKyc = async (status: 'verified' | 'rejected') => {
+    if (!kycReview) return;
+    setKycBusy(true);
+    const res = await adminSetKyc(kycReview.userId, status, kycReason);
+    setKycBusy(false);
     if (!res.ok) {
       flash('error', res.message);
       return;
     }
-    flash('ok', `KYC ${user.kycVerified ? 'revoked' : 'verified'} for ${user.email}.`);
+    flash(
+      'ok',
+      status === 'verified'
+        ? `KYC approved for ${kycReview.email || 'user'}.`
+        : `KYC rejected for ${kycReview.email || 'user'}.`
+    );
+    setKycReview(null);
     await refresh();
+  };
+
+  const openFreeze = (user: AdminUserRow) => {
+    setFreezeFor(user);
+    setFreezeReason(user.frozenReason || '');
+  };
+
+  const applyFreeze = async (frozen: boolean) => {
+    if (!freezeFor) return;
+    setFreezeBusy(true);
+    const res = await adminSetFrozen(freezeFor.userId, frozen, freezeReason);
+    setFreezeBusy(false);
+    if (!res.ok) {
+      flash('error', res.message);
+      return;
+    }
+    flash('ok', `${frozen ? 'Froze' : 'Unfroze'} ${freezeFor.email || 'account'}.`);
+    setFreezeFor(null);
+    setFreezeReason('');
+    await refresh();
+  };
+
+  const openThread = useCallback(
+    async (uid: string) => {
+      setThreadUserId(uid);
+      setReplyDraft('');
+      const res = await adminFetchChatThread(uid);
+      if (res.ok) setThreadMessages(res.messages);
+      void adminMarkChatRead(uid);
+    },
+    []
+  );
+
+  const sendReply = async () => {
+    if (!threadUserId || !replyDraft.trim() || replyBusy) return;
+    const body = replyDraft.trim();
+    setReplyBusy(true);
+    const res = await adminSendChatReply(threadUserId, body);
+    setReplyBusy(false);
+    if (!res.ok) {
+      flash('error', res.message);
+      return;
+    }
+    setReplyDraft('');
+    const t = await adminFetchChatThread(threadUserId);
+    if (t.ok) setThreadMessages(t.messages);
+    const list = await adminListChatThreads();
+    if (list.ok) setThreads(list.threads);
+  };
+
+  const saveCustody = async () => {
+    setCustodyBusy(true);
+    const res = await adminSetCustodySettings(custodyForm);
+    setCustodyBusy(false);
+    if (!res.ok) {
+      flash('error', res.message);
+      return;
+    }
+    flash('ok', 'Deposit custody details updated. Users see them in the deposit popup.');
   };
 
   const saveSettings = async () => {
@@ -489,31 +649,77 @@ export default function AdminPage({ onExit }: AdminPageProps) {
                       </td>
                       <td className="px-4 py-3 text-slate-600 text-xs">{u.country || '—'}</td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => void handleKyc(u)}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold cursor-pointer ${
-                            u.kycVerified
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}
-                        >
-                          {u.kycVerified ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                          {u.kycVerified ? 'Verified' : 'Unverified'}
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          <button
+                            type="button"
+                            onClick={() => void openKycReview(u)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[11px] font-semibold cursor-pointer ${
+                              u.kycStatus === 'verified'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : u.kycStatus === 'pending'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : u.kycStatus === 'rejected'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {u.kycStatus === 'verified' ? (
+                              <Check className="w-3 h-3" />
+                            ) : u.kycStatus === 'pending' ? (
+                              <FileText className="w-3 h-3" />
+                            ) : (
+                              <X className="w-3 h-3" />
+                            )}
+                            {u.kycStatus === 'verified'
+                              ? 'Verified'
+                              : u.kycStatus === 'pending'
+                                ? 'Review'
+                                : u.kycStatus === 'rejected'
+                                  ? 'Rejected'
+                                  : 'Unverified'}
+                          </button>
+                          {u.accountFrozen && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                              <Snowflake className="w-2.5 h-2.5" /> Frozen
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-900">
                         {formatCurrency(u.cashBalance)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openAdjust(u)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <Minus className="w-3 h-3" /> Balance
-                        </button>
+                        <div className="inline-flex flex-wrap justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openAdjust(u)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                            title="Increase or decrease balance and add a transaction"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <Minus className="w-3 h-3" /> Balance
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openFreeze(u)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer ${
+                              u.accountFrozen
+                                ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                                : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                            }`}
+                            title={u.accountFrozen ? 'Unfreeze account' : 'Freeze account for KYC/review'}
+                          >
+                            {u.accountFrozen ? (
+                              <>
+                                <Unlock className="w-3 h-3" /> Unfreeze
+                              </>
+                            ) : (
+                              <>
+                                <Snowflake className="w-3 h-3" /> Freeze
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -521,6 +727,227 @@ export default function AdminPage({ onExit }: AdminPageProps) {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'kyc' && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold text-slate-900">KYC review queue</h2>
+            <span className="text-xs text-slate-500">
+              {users.filter((u) => u.kycStatus === 'pending').length} pending ·{' '}
+              {users.filter((u) => u.kycStatus === 'verified').length} verified
+            </span>
+          </div>
+
+          {users.length === 0 ? (
+            <p className="p-6 text-sm text-slate-500">No users yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-semibold">User</th>
+                    <th className="text-left px-4 py-2.5 font-semibold">Submitted</th>
+                    <th className="text-left px-4 py-2.5 font-semibold">Document</th>
+                    <th className="text-left px-4 py-2.5 font-semibold">Status</th>
+                    <th className="text-right px-4 py-2.5 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[...users]
+                    .sort((a, b) => {
+                      const rank = (s: string) =>
+                        s === 'pending' ? 0 : s === 'rejected' ? 1 : s === 'verified' ? 3 : 2;
+                      return rank(a.kycStatus) - rank(b.kycStatus);
+                    })
+                    .map((u) => (
+                      <tr key={u.userId} className="hover:bg-slate-50/60">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-slate-900">
+                            {`${u.firstName} ${u.lastName}`.trim() || 'Unnamed user'}
+                          </p>
+                          <p className="text-xs text-slate-500">{u.email || u.userId}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                          {u.kycSubmittedAt ? new Date(u.kycSubmittedAt).toLocaleString() : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600">
+                          {u.kycDocumentName ? (
+                            <span className="inline-flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5 text-slate-400" />
+                              {u.kycDocumentName}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex px-2 py-0.5 rounded-full border text-[11px] font-semibold capitalize ${statusClasses(u.kycStatus)}`}
+                          >
+                            {u.kycStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex flex-wrap justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void openKycReview(u)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 cursor-pointer"
+                            >
+                              <FileText className="w-3 h-3" /> Review
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openFreeze(u)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer ${
+                                u.accountFrozen
+                                  ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'
+                                  : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {u.accountFrozen ? (
+                                <>
+                                  <Unlock className="w-3 h-3" /> Unfreeze
+                                </>
+                              ) : (
+                                <>
+                                  <Snowflake className="w-3 h-3" /> Freeze
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'support' && (
+        <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-900">Live chats</h2>
+              <span className="text-[11px] text-slate-500">{threads.length}</span>
+            </div>
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100">
+              {threads.length === 0 ? (
+                <p className="p-4 text-xs text-slate-500">
+                  No conversations yet. User messages from the CS button appear here.
+                </p>
+              ) : (
+                threads.map((t) => (
+                  <button
+                    key={t.userId}
+                    type="button"
+                    onClick={() => void openThread(t.userId)}
+                    className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 cursor-pointer ${
+                      threadUserId === t.userId ? 'bg-slate-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-xs font-semibold text-slate-900">
+                        {t.name || t.email || t.userId.slice(0, 8)}
+                      </p>
+                      {t.unread > 0 && (
+                        <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                          {t.unread}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{t.lastMessage}</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">
+                      {t.lastAt ? new Date(t.lastAt).toLocaleString() : ''}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col min-h-[420px]">
+            {threadUserId ? (
+              <>
+                <div className="px-4 py-2.5 border-b border-slate-200 flex items-center gap-2">
+                  <Headset className="w-4 h-4 text-slate-400" />
+                  <p className="text-sm font-bold text-slate-900">
+                    {threads.find((t) => t.userId === threadUserId)?.name ||
+                      threads.find((t) => t.userId === threadUserId)?.email ||
+                      'Conversation'}
+                  </p>
+                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" /> Live
+                  </span>
+                </div>
+
+                <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50 px-4 py-3 max-h-[320px]">
+                  {threadMessages.length === 0 ? (
+                    <p className="text-xs text-slate-500">No messages in this conversation yet.</p>
+                  ) : (
+                    threadMessages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex ${m.sender === 'agent' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-sm ${
+                            m.sender === 'agent'
+                              ? 'rounded-br-md bg-slate-900 text-white'
+                              : 'rounded-bl-md border border-slate-200 bg-white text-slate-700'
+                          }`}
+                        >
+                          {m.message}
+                          <div
+                            className={`mt-1 text-[10px] ${
+                              m.sender === 'agent' ? 'text-slate-400' : 'text-slate-400'
+                            }`}
+                          >
+                            {new Date(m.createdAt).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void sendReply();
+                  }}
+                  className="border-t border-slate-200 p-3 flex items-center gap-2"
+                >
+                  <input
+                    value={replyDraft}
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                    placeholder="Reply as Xena Support…"
+                    className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!replyDraft.trim() || replyBusy}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                  >
+                    {replyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+                <MessageCircle className="w-8 h-8 text-slate-300" />
+                <p className="text-sm font-semibold text-slate-700">Select a conversation</p>
+                <p className="text-xs text-slate-500">
+                  Replies are delivered live to the user&apos;s Support chat.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -732,6 +1159,63 @@ export default function AdminPage({ onExit }: AdminPageProps) {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-5">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+              <Landmark className="w-4 h-4 text-slate-500" /> Deposit custody details
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              These details appear in every user&apos;s deposit popup. Edit them here whenever the
+              receiving account changes.
+            </p>
+
+            <div className="mt-4 space-y-2.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Bank / custodian</label>
+                <input
+                  value={custodyForm.bankName}
+                  onChange={(e) => setCustodyForm({ ...custodyForm, bankName: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Account number</label>
+                <input
+                  value={custodyForm.accountNumber}
+                  onChange={(e) => setCustodyForm({ ...custodyForm, accountNumber: e.target.value })}
+                  className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Routing (ABA)</label>
+                  <input
+                    value={custodyForm.routingNumber}
+                    onChange={(e) => setCustodyForm({ ...custodyForm, routingNumber: e.target.value })}
+                    className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Ref. prefix</label>
+                  <input
+                    value={custodyForm.referencePrefix}
+                    onChange={(e) => setCustodyForm({ ...custodyForm, referencePrefix: e.target.value })}
+                    className="w-full px-3 py-2 text-sm font-mono border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void saveCustody()}
+              disabled={custodyBusy}
+              className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 cursor-pointer"
+            >
+              {custodyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Save custody details
+            </button>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-xl p-5">
             <h2 className="text-sm font-bold text-slate-900">Security</h2>
             <p className="text-xs text-slate-500 mt-1">
               Admin credentials live in <code className="text-[11px]">public.admin_users</code> with
@@ -746,6 +1230,161 @@ values ('admin@xenabroker.com',
               This console uses the service role key, so admin sign-in is the only gate. Keep the
               password out of shared links.
             </p>
+          </div>
+        </div>
+      )}
+
+      {kycReview && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">KYC review</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {`${kycReview.firstName} ${kycReview.lastName}`.trim() || 'Unnamed user'} ·{' '}
+                  {kycReview.email || kycReview.userId.slice(0, 8)}
+                </p>
+                <p className="text-xs text-slate-400">
+                  Current status: <span className="capitalize">{kycReview.kycStatus}</span>
+                  {kycReview.kycSubmittedAt
+                    ? ` · submitted ${new Date(kycReview.kycSubmittedAt).toLocaleString()}`
+                    : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setKycReview(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {kycDocBusy ? (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading document…
+                </div>
+              ) : kycDoc ? (
+                <div className="space-y-2">
+                  <img
+                    src={kycDoc}
+                    alt="KYC document"
+                    className="max-h-64 w-full rounded-lg border border-slate-200 bg-white object-contain"
+                  />
+                  <a
+                    href={kycDoc}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Open full size{kycDocName ? ` · ${kycDocName}` : ''}
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  No document uploaded for this user. You can still approve the identity if it was
+                  verified out-of-band.
+                </p>
+              )}
+            </div>
+
+            <label className="block text-xs font-semibold text-slate-600 mt-4 mb-1.5">
+              Rejection reason (optional)
+            </label>
+            <input
+              value={kycReason}
+              onChange={(e) => setKycReason(e.target.value)}
+              placeholder="e.g. Photo is blurred — please re-upload"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void reviewKyc('verified')}
+                disabled={kycBusy}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+              >
+                {kycBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Approve KYC
+              </button>
+              <button
+                type="button"
+                onClick={() => void reviewKyc('rejected')}
+                disabled={kycBusy}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 cursor-pointer"
+              >
+                {kycBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {freezeFor && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                  <Snowflake className="w-4 h-4 text-sky-600" />
+                  {freezeFor.accountFrozen ? 'Unfreeze account' : 'Freeze account'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">{freezeFor.email || freezeFor.userId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFreezeFor(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-600">
+              {freezeFor.accountFrozen
+                ? 'Unfreezing restores deposits, withdrawals and trading immediately.'
+                : 'Freezing locks deposits, withdrawals and trading until you unfreeze the account. Use this for KYC or fraud review.'}
+            </p>
+
+            {!freezeFor.accountFrozen && (
+              <>
+                <label className="block text-xs font-semibold text-slate-600 mt-4 mb-1.5">
+                  Reason shown to the user
+                </label>
+                <input
+                  value={freezeReason}
+                  onChange={(e) => setFreezeReason(e.target.value)}
+                  placeholder="e.g. KYC document under review"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                />
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => void applyFreeze(!freezeFor.accountFrozen)}
+              disabled={freezeBusy}
+              className={`mt-4 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-60 cursor-pointer ${
+                freezeFor.accountFrozen
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-slate-900 hover:bg-slate-800'
+              }`}
+            >
+              {freezeBusy ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : freezeFor.accountFrozen ? (
+                <Unlock className="w-3.5 h-3.5" />
+              ) : (
+                <Lock className="w-3.5 h-3.5" />
+              )}
+              {freezeFor.accountFrozen ? 'Unfreeze account' : 'Freeze account'}
+            </button>
           </div>
         </div>
       )}
@@ -783,12 +1422,29 @@ values ('admin@xenabroker.com',
             />
 
             <label className="block text-xs font-semibold text-slate-600 mt-3 mb-1.5">
-              Reason (optional)
+              Transaction label
+            </label>
+            <select
+              value={adjustLabel}
+              onChange={(e) => setAdjustLabel(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 cursor-pointer"
+            >
+              <option value="Trade profit">Trade profit</option>
+              <option value="Trade loss">Trade loss</option>
+              <option value="Bonus">Bonus</option>
+              <option value="Deposit correction">Deposit correction</option>
+              <option value="Withdrawal correction">Withdrawal correction</option>
+              <option value="Account correction">Account correction</option>
+              <option value="Manual adjustment">Manual adjustment</option>
+            </select>
+
+            <label className="block text-xs font-semibold text-slate-600 mt-3 mb-1.5">
+              Note (optional)
             </label>
             <input
               value={adjustReason}
               onChange={(e) => setAdjustReason(e.target.value)}
-              placeholder="Manual adjustment"
+              placeholder="e.g. AAPL swing trade — 12 Nov"
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
             />
 

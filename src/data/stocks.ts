@@ -410,6 +410,49 @@ export function createInitialBrokerState(): BrokerState {
   };
 }
 
+/**
+ * A brand-new account: no cash, no positions, no orders, no history.
+ * Real balance only ever comes from a deposit (approved by an admin) or the
+ * one-time welcome bonus granted by the backend.
+ */
+export function createEmptyBrokerState(): BrokerState {
+  return {
+    cashBalance: 0,
+    positions: {},
+    orders: [],
+    watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'JPM'],
+    ledger: [],
+    bankAccounts: [],
+  };
+}
+
+/**
+ * A demo account: $10,000 of virtual money so visitors can practise trading.
+ * Nothing here is ever mirrored to the cloud, and withdrawals are locked.
+ */
+export function createDemoBrokerState(): BrokerState {
+  const now = new Date().toISOString();
+  return {
+    cashBalance: 10000,
+    positions: {},
+    orders: [],
+    watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'JPM'],
+    ledger: [
+      {
+        id: `LDG-${Math.floor(1000 + Math.random() * 9000)}`,
+        type: 'deposit',
+        amount: 10000,
+        description: 'Demo Account — Virtual Funds',
+        reference: 'XN-DEMO10K',
+        timestamp: now,
+        balanceAfter: 10000,
+        status: 'completed',
+      },
+    ],
+    bankAccounts: [],
+  };
+}
+
 export function createFreshCashBrokerState(): BrokerState {
   const now = Date.now();
   return {

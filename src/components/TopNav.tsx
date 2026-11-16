@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { ArrowRight, Globe2, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
-import { PageId, UserAccount } from '../types/broker';
+import { AccountMode, PageId, UserAccount } from '../types/broker';
 
 interface TopNavProps {
   activePage: PageId;
   onNavigate: (page: PageId) => void;
   user: UserAccount | null;
   onLogout: () => void;
+  accountMode: AccountMode;
+  onSwitchAccount: (mode: AccountMode) => void;
 }
 
 const NAV_ITEMS: { id: PageId; label: string }[] = [
@@ -22,6 +24,8 @@ export default function TopNav({
   onNavigate,
   user,
   onLogout,
+  accountMode,
+  onSwitchAccount,
 }: TopNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -96,6 +100,34 @@ export default function TopNav({
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {user && (
+            <div className="hidden sm:inline-flex items-center rounded-lg border border-slate-300 bg-slate-50 p-0.5 text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => onSwitchAccount('real')}
+                className={`rounded-md px-2.5 py-1.5 transition-colors cursor-pointer ${
+                  accountMode === 'real'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="Funded real-money account"
+              >
+                Real
+              </button>
+              <button
+                type="button"
+                onClick={() => onSwitchAccount('demo')}
+                className={`rounded-md px-2.5 py-1.5 transition-colors cursor-pointer ${
+                  accountMode === 'demo'
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+                title="Virtual practice account with $10,000"
+              >
+                Demo
+              </button>
+            </div>
+          )}
           {user ? (
             <>
               <button
@@ -187,6 +219,41 @@ export default function TopNav({
               >
                 Open account
               </button>
+            </div>
+          )}
+
+          {user && (
+            <div className="pt-2 border-t border-slate-200">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSwitchAccount('real');
+                    setMobileOpen(false);
+                  }}
+                  className={`rounded-lg px-3 py-2.5 text-sm font-semibold cursor-pointer ${
+                    accountMode === 'real'
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-300 text-slate-700'
+                  }`}
+                >
+                  Real account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSwitchAccount('demo');
+                    setMobileOpen(false);
+                  }}
+                  className={`rounded-lg px-3 py-2.5 text-sm font-semibold cursor-pointer ${
+                    accountMode === 'demo'
+                      ? 'bg-amber-500 text-white'
+                      : 'border border-slate-300 text-slate-700'
+                  }`}
+                >
+                  Demo account
+                </button>
+              </div>
             </div>
           )}
         </div>

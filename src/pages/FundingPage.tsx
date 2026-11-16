@@ -14,7 +14,8 @@ import {
   Plus,
   X,
 } from 'lucide-react';
-import { BankAccount, LedgerEntry, UserAccount } from '../types/broker';
+import { AccountMode, BankAccount, LedgerEntry, UserAccount } from '../types/broker';
+import { CustodySettings } from '../cloud';
 import { formatCurrency, formatSignedCurrency, formatTimestamp } from '../utils/formatters';
 
 interface FundingPageProps {
@@ -23,12 +24,14 @@ interface FundingPageProps {
   reservedCash: number;
   bankAccounts: BankAccount[];
   ledger: LedgerEntry[];
+  custody: CustodySettings;
+  accountMode: AccountMode;
+  accountFrozen: boolean;
   onTransferFunds: (params: {
     direction: 'deposit' | 'withdrawal';
     amount: number;
     bankAccountId: string;
   }) => { ok: boolean; message: string };
-  onApproveDeposit: (ledgerId: string) => void;
   onAddBankAccount: (institution: string, accountLabel: string, last4: string) => void;
   onGoToTrade: () => void;
   onGoToPortfolio: () => void;
@@ -42,8 +45,10 @@ export default function FundingPage({
   reservedCash,
   bankAccounts,
   ledger,
+  custody,
+  accountMode,
+  accountFrozen,
   onTransferFunds,
-  onApproveDeposit,
   onAddBankAccount,
   onGoToTrade,
   onGoToPortfolio,
@@ -62,7 +67,9 @@ export default function FundingPage({
   const [newLast4, setNewLast4] = useState('');
 
   const availableCash = Math.max(0, cashBalance - reservedCash);
-  const depositRefCode = `XN-DEP-${user?.accountNumber?.replace('XN-', '') ?? '482910'}`;
+  const accountDigits = (user?.accountNumber ?? 'XN-482910').replace(/\D/g, '').slice(-6) || '482910';
+  const depositRefCode = `${custody.referencePrefix || 'XN-DEP'}-${accountDigits}`;
+  const fundingLocked = accountFrozen || accountMode === 'demo';
 
   const handleCopyValue = (fieldKey: string, value: string) => {
     navigator.clipboard?.writeText(value).catch(() => {});
@@ -316,7 +323,8 @@ export default function FundingPage({
             <button
               type="button"
               onClick={() => handleOpenModal('deposit')}
-              className="py-3 px-4 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl shadow-xs hover:from-[var(--primary-500)] hover:to-[var(--secondary-500)] transition-all inline-flex items-center justify-center gap-2 cursor-pointer"
+              disabled={fundingLocked}
+              className="py-3 px-4 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl shadow-xs hover:from-[var(--primary-500)] hover:to-[var(--secondary-500)] transition-all inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowDownLeft className="w-4 h-4" />
               <span>Deposit</span>
@@ -324,12 +332,25 @@ export default function FundingPage({
             <button
               type="button"
               onClick={() => handleOpenModal('withdrawal')}
-              className="py-3 px-4 text-sm font-semibold text-[var(--muted)] bg-[var(--subtle)] border border-[var(--border)] rounded-xl hover:bg-[var(--white)] hover:border-[var(--primary)] transition-colors inline-flex items-center justify-center gap-2 cursor-pointer"
+              disabled={fundingLocked}
+              className="py-3 px-4 text-sm font-semibold text-[var(--muted)] bg-[var(--subtle)] border border-[var(--border)] rounded-xl hover:bg-[var(--white)] hover:border-[var(--primary)] transition-colors inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowUpRight className="w-4 h-4" />
               <span>Withdraw</span>
             </button>
           </div>
+
+          {accountMode === 'demo' && (
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+              Demo account: practice with virtual funds. Deposits and withdrawals are locked —
+              switch to your real account to fund it.
+            </p>
+          )}
+          {accountFrozen && (
+            <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
+              Account frozen for review. Funding and trading are locked until an admin resolves it.
+            </p>
+          )}
 
           <div className="mt-5 pt-4 border-t border-[var(--border)] space-y-3 text-xs sm:text-sm">
             <div className="flex items-center justify-between text-[var(--muted-foreground)]">
@@ -394,7 +415,8 @@ export default function FundingPage({
                   {visibleTransactions.map((entry) => {
                     const isCredit = entry.amount >= 0;
                     const isPending = entry.status === 'pending';
-                    const isApproved = entry.status === 'approved';
+                    const isApproved = entry.status === 'approved' || entry.status === 'completed';
+                    const isRejected = entry.status === 'rejected';
                     return (
                       <div
                         key={entry.id}
@@ -408,13 +430,23 @@ export default function FundingPage({
                             {isPending && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)]">
                                 <Clock className="w-3.5 h-3.5" />
-                                <span>Pending · Under Review</span>
+                                <span>
+                                  {entry.type === 'withdrawal'
+                                    ? 'Pending · awaiting approval'
+                                    : 'Pending · awaiting admin review'}
+                                </span>
                               </span>
                             )}
                             {isApproved && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--secondary)]">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>Approved</span>
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--destructive)]">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                <span>Rejected</span>
                               </span>
                             )}
                           </div>
@@ -425,16 +457,6 @@ export default function FundingPage({
                         </div>
 
                         <div className="flex items-center gap-3 ml-auto shrink-0">
-                          {isPending && (
-                            <button
-                              type="button"
-                              onClick={() => onApproveDeposit(entry.id)}
-                              className="px-3 py-1.5 text-xs font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-lg shadow-2xs hover:from-[var(--primary-400)] hover:to-[var(--secondary-400)] transition-all whitespace-nowrap cursor-pointer"
-                            >
-                              Admin Approve
-                            </button>
-                          )}
-
                           <div className="text-right font-mono tabular-nums">
                             <div
                               className={`text-sm sm:text-base font-bold ${
@@ -591,7 +613,7 @@ export default function FundingPage({
             if (e.target === e.currentTarget) setModalTransfer(null);
           }}
         >
-          <div className="w-full max-w-md bg-[var(--modal-bg)] border border-[var(--modal-border)] rounded-2xl shadow-[var(--modal-shadow)] max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-md bg-[var(--modal-bg)] border border-[var(--modal-border)] rounded-2xl shadow-[var(--modal-shadow)] max-h-[90vh] overflow-y-auto p-5 sm:p-6">
             <div className="flex items-center justify-between pb-4 border-b border-[var(--modal-border)]">
               <h2
                 id="transfer-modal-title"
@@ -642,92 +664,51 @@ export default function FundingPage({
               </button>
             </div>
 
-            <form onSubmit={handleTransferSubmit} className="mt-4 space-y-4 max-h-[80vh] overflow-y-auto">
-              {/* Copyable Custody Deposit Account Details (shown for Deposit) */}
+            <form onSubmit={handleTransferSubmit} className="mt-4 space-y-4">
+              {/* Compact custody deposit details */}
               {modalTransfer === 'deposit' && (
-                <div className="rounded-2xl bg-[var(--modal-card-bg)] border border-[var(--modal-card-border)] p-4 space-y-2.5">
+                <div className="rounded-xl bg-[var(--modal-card-bg)] border border-[var(--modal-card-border)] p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs font-bold text-[var(--foreground)]">
-                      Copy Deposit Account Details
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">
+                      Send transfer to
                     </div>
-                    <span className="text-[11px] font-medium text-[var(--primary)]">
-                      Xena Clearing Custody
+                    <span className="text-[11px] font-semibold text-[var(--primary)]">
+                      {custody.bankName}
                     </span>
                   </div>
-                  <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                    Transfer your deposit to this custody account, then click Confirm Deposit below for admin review.
-                  </p>
 
-                  <div className="space-y-2 pt-1 text-xs">
-                    <div className="flex items-center justify-between gap-2 bg-[var(--input)]/90 border border-[var(--border)]/80 rounded-xl px-3 py-2">
-                      <div>
-                        <div className="text-[11px] text-[var(--muted-foreground)]">Account Number</div>
-                        <div className="font-mono tabular-nums font-bold text-[var(--foreground)]">
-                          8842 9104 7731
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyValue('acct', '884291047731')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[var(--primary)] bg-gradient-to-r from-[var(--primary-50)] to-[var(--secondary-50)] border border-[var(--primary)]/20 rounded-lg hover:from-[var(--primary-100)] hover:to-[var(--secondary-100)] hover:text-[var(--primary-foreground)] transition-all cursor-pointer shrink-0"
+                  <div className="space-y-1.5 text-xs">
+                    {[
+                      { key: 'acct', label: 'Account', value: custody.accountNumber },
+                      { key: 'routing', label: 'Routing', value: custody.routingNumber },
+                      { key: 'ref', label: 'Reference', value: depositRefCode },
+                    ].map((row) => (
+                      <div
+                        key={row.key}
+                        className="flex items-center justify-between gap-2 rounded-lg bg-[var(--input)]/90 border border-[var(--border)]/80 px-2.5 py-1.5"
                       >
-                        {copiedField === 'acct' ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center justify-between gap-1.5 bg-[var(--input)]/90 border border-[var(--border)]/80 rounded-xl px-3 py-2">
                         <div className="min-w-0">
-                          <div className="text-[11px] text-[var(--muted-foreground)]">Routing (ABA)</div>
-                          <div className="font-mono tabular-nums font-bold text-[var(--foreground)] truncate">
-                            021000021
+                          <div className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)]">
+                            {row.label}
+                          </div>
+                          <div className="truncate font-mono font-bold tabular-nums text-[var(--foreground)]">
+                            {row.value}
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleCopyValue('routing', '021000021')}
-                          aria-label="Copy routing number"
-                          className="p-1.5 text-[var(--primary)] bg-[var(--primary-50)] border border-[var(--primary)]/20 rounded-lg hover:bg-[var(--primary-100)] hover:text-[var(--primary-foreground)] transition-colors cursor-pointer shrink-0"
+                          onClick={() => handleCopyValue(row.key, row.value.replace(/\s+/g, ''))}
+                          aria-label={`Copy ${row.label.toLowerCase()}`}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[var(--primary)] bg-[var(--primary-50)] border border-[var(--primary)]/20 rounded-lg hover:bg-[var(--primary-100)] hover:text-[var(--primary-foreground)] transition-colors cursor-pointer shrink-0"
                         >
-                          {copiedField === 'routing' ? (
+                          {copiedField === row.key ? (
                             <Check className="w-3.5 h-3.5" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
                         </button>
                       </div>
-
-                      <div className="flex items-center justify-between gap-1.5 bg-[var(--input)]/90 border border-[var(--border)]/80 rounded-xl px-3 py-2">
-                        <div className="min-w-0">
-                          <div className="text-[11px] text-[var(--muted-foreground)]">Reference</div>
-                          <div className="font-mono tabular-nums font-bold text-[var(--foreground)] truncate">
-                            {depositRefCode}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyValue('ref', depositRefCode)}
-                          aria-label="Copy deposit reference"
-                          className="p-1.5 text-[var(--primary)] bg-[var(--primary-50)] border border-[var(--primary)]/20 rounded-lg hover:bg-[var(--primary-100)] hover:text-[var(--primary-foreground)] transition-colors cursor-pointer shrink-0"
-                        >
-                          {copiedField === 'ref' ? (
-                            <Check className="w-3.5 h-3.5" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -819,34 +800,11 @@ export default function FundingPage({
                 </div>
               )}
 
-              {/* Transfer Summary */}
-              <div className="pt-3 border-t border-[var(--border)] space-y-2 text-xs sm:text-sm text-[var(--muted-foreground)]">
-                <div className="flex items-center justify-between">
-                  <span>{modalTransfer === 'deposit' ? 'Custody Account' : 'To'}</span>
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {modalTransfer === 'deposit'
-                      ? `Xena Clearing · ${depositRefCode}`
-                      : selectedBank
-                        ? `${selectedBank.institution} ••••${selectedBank.last4}`
-                        : 'Linked Bank'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Review Status</span>
-                  <span
-                    className={`font-semibold ${
-                      modalTransfer === 'deposit' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'
-                    }`}
-                  >
-                    {modalTransfer === 'deposit'
-                      ? 'Pending Admin Approval'
-                      : '1–2 Business Days'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Transfer Fee</span>
-                  <span className="font-mono tabular-nums font-semibold text-[var(--secondary)]">$0.00</span>
-                </div>
+              {/* Compact review note */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                {modalTransfer === 'deposit'
+                  ? 'Confirm after sending the transfer. It shows as Pending and your balance is credited once an admin approves it.'
+                  : 'Your withdrawal shows as Pending · awaiting approval and is completed once an admin approves it.'}
               </div>
 
               {feedback && (

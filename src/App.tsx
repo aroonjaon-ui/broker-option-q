@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ShieldAlert, Sparkles } from 'lucide-react';
 import TopNav from './components/TopNav';
+import SupportChat from './components/SupportChat';
 import WithdrawalToastFeed from './components/WithdrawalToastFeed';
 import PlatformModals, { AppModalKind } from './components/PlatformModals';
 import HomePage from './pages/HomePage';
@@ -13,12 +15,16 @@ import AdminPage from './pages/AdminPage';
 import {
   INITIAL_INDICES,
   INITIAL_STOCKS,
-  createFreshCashBrokerState,
-  createInitialBrokerState,
+  createDemoBrokerState,
+  createEmptyBrokerState,
 } from './data/stocks';
 import {
+  AccountMode,
   BrokerState,
   KycProfile,
+  KycStatus,
+  LedgerEntry,
+  LedgerStatus,
   MarketIndex,
   Order,
   OrderSide,
@@ -30,10 +36,16 @@ import {
 } from './types/broker';
 import { formatCurrency } from './utils/formatters';
 import {
+  CloudSnapshot,
+  CustodySettings,
+  DEFAULT_CUSTODY_SETTINGS,
   ensureCloudUser,
+  fetchMyLedger,
+  getCustodySettings,
   getSessionUser,
   pullSnapshot,
   pushBalance,
+  pushKyc,
   pushPositions,
   pushProfile,
   signInCloud,
@@ -41,15 +53,27 @@ import {
   signUpCloud,
   submitDepositRequest,
   submitWithdrawalRequest,
+  updateCloudPassword,
 } from './cloud';
 
 const STORAGE_KEY = 'xena_broker_state_v1';
+const DEMO_STORAGE_KEY = 'xena_broker_demo_state_v1';
+const ACCOUNT_MODE_KEY = 'xena_broker_account_mode_v1';
 const USER_STORAGE_KEY = 'xena_broker_user_v1';
 const ACCOUNTS_STORAGE_KEY = 'xena_broker_accounts_v1';
 const KYC_STORAGE_KEY = 'xena_broker_kyc_v1';
 const DAILY_SPIN_SHOWN_KEY = 'xena_broker_daily_spin_last_shown_v1';
 const PLATFORM_INFO_SEEN_KEY = 'xena_broker_platform_seen_v1';
+const THEME_KEY = 'xena_theme_v1';
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+function loadTheme(): 'light' | 'dark' {
+  try {
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
 
 function isDailySpinDue(): boolean {
   try {
@@ -95,7 +119,7 @@ interface StoredCredential {
 function loadSavedState(): BrokerState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createInitialBrokerState();
+    if (!raw) return createEmptyBrokerState();
     const parsed = JSON.parse(raw) as BrokerState;
     if (
       typeof parsed.cashBalance === 'number' &&
@@ -108,9 +132,39 @@ function loadSavedState(): BrokerState {
       return parsed;
     }
   } catch {
-    // Fallback to initial state
+    // Fallback to an empty account
   }
-  return createInitialBrokerState();
+  return createEmptyBrokerState();
+}
+
+function loadSavedDemoState(): BrokerState {
+  try {
+    const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as BrokerState;
+      if (
+        typeof parsed.cashBalance === 'number' &&
+        parsed.positions &&
+        Array.isArray(parsed.orders) &&
+        Array.isArray(parsed.watchlist) &&
+        Array.isArray(parsed.ledger) &&
+        Array.isArray(parsed.bankAccounts)
+      ) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Fall back to a fresh demo account
+  }
+  return createDemoBrokerState();
+}
+
+function loadSavedAccountMode(): AccountMode {
+  try {
+    return localStorage.getItem(ACCOUNT_MODE_KEY) === 'demo' ? 'demo' : 'real';
+  } catch {
+    return 'real';
+  }
 }
 
 function loadSavedUser(): UserAccount | null {
@@ -280,19 +334,167 @@ export default function App() {
   const [stocks, setStocks] = useState<Stock[]>(INITIAL_STOCKS);
   const [indices, setIndices] = useState<MarketIndex[]>(INITIAL_INDICES);
   const [isLiveQuotes, setIsLiveQuotes] = useState<boolean>(true);
-  const [broker, setBroker] = useState<BrokerState>(loadSavedState);
+  const [broker, setBroker] = useState<BrokerState>(() =>
+    loadSavedAccountMode() === 'demo' && loadSavedUser()
+      ? loadSavedDemoState()
+      : loadSavedState()
+  );
   const [user, setUser] = useState<UserAccount | null>(loadSavedUser);
+  const [accountMode, setAccountMode] = useState<AccountMode>(loadSavedAccountMode);
   const [credentials, setCredentials] = useState<StoredCredential[]>(loadSavedCredentials);
   const [kyc, setKyc] = useState<KycProfile | null>(loadSavedKyc);
+  const [accountFrozen, setAccountFrozen] = useState(false);
+  const [frozenReason, setFrozenReason] = useState('');
+  const [custody, setCustody] = useState<CustodySettings>(DEFAULT_CUSTODY_SETTINGS);
+  const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
   const cloudUserIdRef = useRef<string | null>(null);
   const lastLocalMoneyChangeRef = useRef<number>(0);
+  const userRef = useRef<UserAccount | null>(user);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  const applyCloudKyc = useCallback((snap: CloudSnapshot) => {
+    const status = (snap.kycStatus || 'unverified') as KycStatus;
+    setAccountFrozen(Boolean(snap.accountFrozen));
+    setFrozenReason(snap.frozenReason || '');
+    if (status === 'unverified') return;
+    setKyc((prev) => ({
+      status,
+      fullName: prev?.fullName ?? '',
+      dateOfBirth: prev?.dateOfBirth ?? '',
+      country: prev?.country ?? '',
+      idType: prev?.idType ?? 'Passport',
+      idLast4: prev?.idLast4 ?? '',
+      address: prev?.address ?? '',
+      verifiedAt:
+        status === 'verified' ? prev?.verifiedAt ?? new Date().toISOString() : prev?.verifiedAt,
+      submittedAt: snap.kycSubmittedAt ?? prev?.submittedAt,
+      documentName: snap.kycDocumentName ?? prev?.documentName,
+      rejectionReason: snap.kycRejectionReason ?? prev?.rejectionReason,
+    }));
+  }, []);
+
+  /** Map a Supabase ledger status onto the local UI status. */
+  const mapCloudStatus = useCallback((status: string): LedgerStatus => {
+    if (status === 'pending') return 'pending';
+    if (status === 'rejected' || status === 'failed') return 'rejected';
+    return 'approved';
+  }, []);
+
+  /**
+   * Reconcile the local history with the cloud ledger so admin approvals, KYC
+   * decisions and balance adjustments show up in the member UI.
+   */
+  const hydrateLedger = useCallback(
+    async (uid: string) => {
+      const res = await fetchMyLedger(uid);
+      if (!res.ok) return;
+      setBroker((prev) => {
+        const cloudById = new Map(res.rows.map((r) => [r.id, r]));
+        const localCloudIds = new Set(
+          prev.ledger.map((e) => e.cloudId).filter((v): v is string => Boolean(v))
+        );
+
+        const updated = prev.ledger.map((entry) => {
+          if (!entry.cloudId) return entry;
+          const row = cloudById.get(entry.cloudId);
+          if (!row) return entry;
+          return {
+            ...entry,
+            status: mapCloudStatus(row.status),
+            balanceAfter: row.cashBalance > 0 ? row.cashBalance : entry.balanceAfter,
+          };
+        });
+
+        const additions: LedgerEntry[] = [];
+        for (const row of res.rows) {
+          if (localCloudIds.has(row.id)) continue;
+          if (!['deposit', 'withdrawal', 'bonus', 'adjustment'].includes(row.type)) continue;
+          const mappedType: LedgerEntry['type'] =
+            row.type === 'withdrawal' ? 'withdrawal' : 'deposit';
+          const description =
+            row.type === 'bonus'
+              ? 'Welcome Sign-Up Cash Bonus'
+              : row.type === 'adjustment'
+                ? 'Admin Balance Adjustment'
+                : row.type === 'withdrawal'
+                  ? 'Bank Withdrawal'
+                  : 'Account Deposit';
+          const when = new Date(row.createdAt).getTime();
+          const duplicate = prev.ledger.some(
+            (e) =>
+              e.type === mappedType &&
+              Math.abs(e.amount - row.amount) < 0.01 &&
+              Math.abs(new Date(e.timestamp).getTime() - when) < 5 * 60 * 1000
+          );
+          if (duplicate) continue;
+          additions.push({
+            id: row.id,
+            cloudId: row.id,
+            type: mappedType,
+            amount: row.amount,
+            description,
+            reference: row.reference || row.method || 'Xena Clearing',
+            timestamp: row.createdAt,
+            balanceAfter: row.cashBalance,
+            status: mapCloudStatus(row.status),
+          });
+        }
+
+        if (additions.length === 0 && updated === prev.ledger) return prev;
+        const ledger = [...updated, ...additions].sort((a, b) =>
+          b.timestamp.localeCompare(a.timestamp)
+        );
+        return { ...prev, ledger };
+      });
+    },
+    [mapCloudStatus]
+  );
+
+  const attachCloudId = useCallback((localId: string, cloudId: string) => {
+    setBroker((prev) => ({
+      ...prev,
+      ledger: prev.ledger.map((entry) =>
+        entry.id === localId ? { ...entry, cloudId } : entry
+      ),
+    }));
+  }, []);
 
   // Deep-link straight into the admin console with #admin
   useEffect(() => {
     if (window.location.hash.toLowerCase() === '#admin') {
       setActivePage('admin');
     }
+  }, []);
+
+  // Load the admin-editable custody deposit details.
+  useEffect(() => {
+    let cancelled = false;
+    void getCustodySettings().then((next) => {
+      if (!cancelled) setCustody(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Apply + persist the user's light/dark appearance choice.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', theme === 'dark');
+    root.style.colorScheme = theme;
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore storage errors
+    }
+  }, [theme]);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
   // Restore an existing Supabase session on first load and hydrate from the cloud
@@ -325,11 +527,23 @@ export default function App() {
         })
       );
 
-      setBroker((prev) => ({
-        ...prev,
-        cashBalance: snap.cashBalance,
-        positions: snap.positions,
-      }));
+      setBroker((prev) => {
+        if (loadSavedAccountMode() === 'demo') {
+          return prev;
+        }
+        return {
+          ...createEmptyBrokerState(),
+          watchlist: prev.watchlist,
+          cashBalance: snap.cashBalance,
+          positions: snap.positions,
+        };
+      });
+      if (loadSavedAccountMode() !== 'demo') {
+        setAccountFrozen(Boolean(snap.accountFrozen));
+        setFrozenReason(snap.frozenReason || '');
+        void hydrateLedger(supaUser.id);
+      }
+      applyCloudKyc(snap);
     })();
 
     return () => {
@@ -388,11 +602,22 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(broker));
+      localStorage.setItem(
+        accountMode === 'demo' ? DEMO_STORAGE_KEY : STORAGE_KEY,
+        JSON.stringify(broker)
+      );
     } catch {
       // Ignore storage quota errors
     }
-  }, [broker]);
+  }, [broker, accountMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACCOUNT_MODE_KEY, accountMode);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [accountMode]);
 
   useEffect(() => {
     try {
@@ -497,10 +722,11 @@ export default function App() {
     return broker.cashBalance + equitiesVal;
   }, [stocks, broker.positions, broker.cashBalance]);
 
-  // Mirror cash + positions to Supabase so the cloud stays the source of truth
+  // Mirror cash + positions to Supabase so the cloud stays the source of truth.
+  // Demo accounts are virtual and never touch the cloud.
   useEffect(() => {
     const uid = cloudUserIdRef.current;
-    if (!uid) return;
+    if (!uid || accountMode !== 'real') return;
 
     const timer = window.setTimeout(() => {
       void pushBalance(uid, broker.cashBalance, reservedCash);
@@ -508,18 +734,21 @@ export default function App() {
     }, 900);
 
     return () => window.clearTimeout(timer);
-  }, [broker.cashBalance, broker.positions, reservedCash]);
+  }, [broker.cashBalance, broker.positions, reservedCash, accountMode]);
 
-  // Pick up admin balance adjustments without clobbering a fresh local change
+  // Pick up admin balance adjustments, KYC decisions and freezes without
+  // clobbering a fresh local change.
   useEffect(() => {
     const timer = window.setInterval(async () => {
       const uid = cloudUserIdRef.current;
-      if (!uid) return;
+      if (!uid || accountMode !== 'real') return;
       if (Date.now() - lastLocalMoneyChangeRef.current < 12000) return;
 
       const snap = await pullSnapshot(uid);
       if (!snap) return;
 
+      applyCloudKyc(snap);
+      void hydrateLedger(uid);
       setBroker((prev) =>
         Math.abs(prev.cashBalance - snap.cashBalance) > 0.009
           ? { ...prev, cashBalance: snap.cashBalance }
@@ -528,9 +757,16 @@ export default function App() {
     }, 20000);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [accountMode, applyCloudKyc, hydrateLedger]);
 
   const navigateTo = useCallback((page: PageId) => {
+    const PUBLIC_PAGES: PageId[] = ['home', 'login', 'signup', 'admin'];
+    // Members-only area: visitors must create an account or log in first.
+    if (!userRef.current && !PUBLIC_PAGES.includes(page)) {
+      setActivePage('login');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -555,9 +791,17 @@ export default function App() {
         return { ok: false, message: 'That email is already registered. Please log in.' };
       }
 
+      let startingCash = 0;
+      let startingPositions: Record<string, { symbol: string; shares: number; avgCost: number }> = {};
       if (cloudUserId) {
         cloudUserIdRef.current = cloudUserId;
         await ensureCloudUser({ userId: cloudUserId, email, name: displayName });
+        const snap = await pullSnapshot(cloudUserId);
+        if (snap) {
+          startingCash = snap.cashBalance;
+          startingPositions = snap.positions;
+          setAccountFrozen(Boolean(snap.accountFrozen));
+        }
       }
 
       const newUser: UserAccount = {
@@ -570,6 +814,31 @@ export default function App() {
       };
       setCredentials((prev) => [...prev, { user: newUser, password }]);
       setUser(newUser);
+      userRef.current = newUser;
+      setAccountMode('real');
+      setKyc(null);
+      setAccountFrozen(false);
+      // Brand-new real account: no positions, no trade history, no demo cash —
+      // only the one-time welcome bonus granted by the backend.
+      setBroker({
+        ...createEmptyBrokerState(),
+        cashBalance: startingCash,
+        positions: startingPositions,
+        ledger:
+          startingCash > 0
+            ? [
+                {
+                  id: `LDG-${Math.floor(1000 + Math.random() * 9000)}`,
+                  type: 'deposit',
+                  amount: startingCash,
+                  description: 'Welcome Sign-Up Cash Bonus',
+                  reference: 'XN-BONUS500',
+                  timestamp: new Date().toISOString(),
+                  balanceAfter: startingCash,
+                },
+              ]
+            : [],
+      });
       // Redirect to CompleteProfile to collect missing profile information
       navigateTo('complete-profile');
 
@@ -648,6 +917,8 @@ export default function App() {
         };
 
         setUser(merged);
+        userRef.current = merged;
+        setAccountMode('real');
         setCredentials((prev) => {
           const idx = prev.findIndex((c) => c.user.email.toLowerCase() === email);
           if (idx >= 0) {
@@ -656,13 +927,13 @@ export default function App() {
           return [...prev, { user: merged, password }];
         });
 
-        if (snap) {
-          setBroker((prev) => ({
-            ...prev,
-            cashBalance: snap.cashBalance,
-            positions: snap.positions,
-          }));
-        }
+        setBroker({
+          ...createEmptyBrokerState(),
+          cashBalance: snap?.cashBalance ?? 0,
+          positions: snap?.positions ?? {},
+        });
+        if (snap) applyCloudKyc(snap);
+        void hydrateLedger(cloud.userId);
 
         navigateTo(merged.hasCompletedProfile ? 'funding' : 'complete-profile');
         return { ok: true };
@@ -671,6 +942,9 @@ export default function App() {
       // Fall back to the local account list (demo account, offline use)
       if (local) {
         setUser(local.user);
+        userRef.current = local.user;
+        setAccountMode('demo');
+        setBroker(loadSavedDemoState());
         navigateTo(local.user.hasCompletedProfile ? 'funding' : 'complete-profile');
         return { ok: true };
       }
@@ -693,15 +967,71 @@ export default function App() {
       hasCompletedProfile: true,
     };
     setUser(demo);
+    userRef.current = demo;
+    setAccountMode('demo');
+    setKyc(null);
+    setAccountFrozen(false);
+    setFrozenReason('');
+    setBroker(loadSavedDemoState());
     navigateTo('funding');
   }, [credentials, navigateTo]);
 
   const handleLogout = useCallback(() => {
     void signOutCloud();
     cloudUserIdRef.current = null;
+    userRef.current = null;
     setUser(null);
+    setAccountMode('real');
+    setKyc(null);
+    setAccountFrozen(false);
+    setFrozenReason('');
+    // Never leave real or demo money visible after signing out.
+    setBroker(createEmptyBrokerState());
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(DEMO_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
     navigateTo('home');
   }, [navigateTo]);
+
+  /** Switch between the funded real account and the $10,000 practice account. */
+  const handleSwitchAccount = useCallback(
+    (mode: AccountMode) => {
+      if (!userRef.current) {
+        navigateTo('login');
+        return;
+      }
+      setAccountMode(mode);
+
+      if (mode === 'demo') {
+        setKyc(null);
+        setAccountFrozen(false);
+        setFrozenReason('');
+        setBroker(loadSavedDemoState());
+        return;
+      }
+
+      // Returning to the real account: reload the last known local state and
+      // then reconcile with the cloud balance.
+      setBroker(loadSavedState());
+      const uid = cloudUserIdRef.current;
+      if (uid) {
+        void (async () => {
+          const snap = await pullSnapshot(uid);
+          if (!snap) return;
+          setBroker({
+            ...createEmptyBrokerState(),
+            cashBalance: snap.cashBalance,
+            positions: snap.positions,
+          });
+          applyCloudKyc(snap);
+        })();
+      }
+    },
+    [navigateTo, applyCloudKyc]
+  );
 
   const handleUpdateProfile = useCallback(
     (name: string, email: string) => {
@@ -728,6 +1058,29 @@ export default function App() {
     []
   );
 
+  const handleChangePassword = useCallback(
+    async (newPassword: string): Promise<{ ok: boolean; message?: string }> => {
+      if (newPassword.length < 6) {
+        return { ok: false, message: 'Password must be at least 6 characters.' };
+      }
+
+      const uid = cloudUserIdRef.current;
+      if (uid) {
+        const cloud = await updateCloudPassword(newPassword);
+        if (!cloud.ok) return { ok: false, message: cloud.message };
+      }
+
+      // Keep the local mirror in sync so offline/demo sign-in still works.
+      setCredentials((creds) =>
+        creds.map((c) =>
+          user && c.user.id === user.id ? { ...c, password: newPassword } : c
+        )
+      );
+      return { ok: true };
+    },
+    [user]
+  );
+
   const handlePlaceOrder = useCallback(
     (params: {
       symbol: string;
@@ -737,6 +1090,12 @@ export default function App() {
       limitPrice?: number;
       timeInForce: TimeInForce;
     }): { ok: boolean; message: string } => {
+      if (accountFrozen) {
+        return {
+          ok: false,
+          message: `Trading is locked on this account${frozenReason ? `: ${frozenReason}` : ' while it is under review'}.`,
+        };
+      }
       const stock = stocks.find((s) => s.symbol === params.symbol);
       if (!stock) {
         return { ok: false, message: 'Selected symbol not found.' };
@@ -824,7 +1183,7 @@ export default function App() {
         message: `Limit order placed: ${params.side.toUpperCase()} ${params.qty} ${params.symbol} @ ${formatCurrency(targetPrice)}.`,
       };
     },
-    [stocks, broker.cashBalance, broker.positions, broker.orders, reservedCash]
+    [stocks, broker.cashBalance, broker.positions, broker.orders, reservedCash, accountFrozen, frozenReason]
   );
 
   const handleCancelOrder = useCallback((orderId: string) => {
@@ -846,6 +1205,35 @@ export default function App() {
       setBroker((prev) => fillOrderIntoState(prev, targetOrder, stock.price));
     },
     [broker.orders, stocks]
+  );
+
+  const handleClosePosition = useCallback(
+    (symbol: string) => {
+      if (accountFrozen) return;
+      const position = broker.positions[symbol];
+      const stock = stocks.find((s) => s.symbol === symbol);
+      if (!position || position.shares <= 0 || !stock) return;
+
+      const nowIso = new Date().toISOString();
+      const order: Order = {
+        id: `XN-${Math.floor(85000 + Math.random() * 14999)}`,
+        symbol,
+        side: 'sell',
+        type: 'market',
+        qty: position.shares,
+        fillPrice: stock.price,
+        status: 'filled',
+        timeInForce: 'DAY',
+        createdAt: nowIso,
+        filledAt: nowIso,
+        total: Number((position.shares * stock.price).toFixed(2)),
+      };
+      setBroker((prev) => {
+        const cleanedOrders = prev.orders.filter((o) => !(o.symbol === symbol && o.status === 'open'));
+        return fillOrderIntoState({ ...prev, orders: cleanedOrders }, order, stock.price);
+      });
+    },
+    [broker.positions, stocks, accountFrozen]
   );
 
   const handleToggleWatchlist = useCallback((symbol: string) => {
@@ -875,6 +1263,19 @@ export default function App() {
       amount: number;
       bankAccountId: string;
     }): { ok: boolean; message: string } => {
+      if (accountFrozen) {
+        return {
+          ok: false,
+          message: `Your account is frozen${frozenReason ? ` (${frozenReason})` : ''}. Contact support to resolve this.`,
+        };
+      }
+      if (accountMode === 'demo') {
+        return {
+          ok: false,
+          message:
+            'Demo accounts trade with virtual funds only — deposits and withdrawals are locked. Switch to your real account to fund it.',
+        };
+      }
       const bank =
         broker.bankAccounts.find((b) => b.id === params.bankAccountId) ??
         broker.bankAccounts[0];
@@ -884,11 +1285,12 @@ export default function App() {
 
       if (params.direction === 'deposit') {
         const nowIso = new Date().toISOString();
+        const localId = `LDG-${Math.floor(1000 + Math.random() * 9000)}`;
         setBroker((prev) => ({
           ...prev,
           ledger: [
             {
-              id: `LDG-${Math.floor(1000 + Math.random() * 9000)}`,
+              id: localId,
               type: 'deposit',
               amount: params.amount,
               description: 'Custody Deposit Transfer',
@@ -910,6 +1312,8 @@ export default function App() {
             method: bankRef,
             reference: 'XN-DEP',
             notes: 'Custody deposit transfer',
+          }).then((res) => {
+            if (res.ok && res.id) attachCloudId(localId, res.id);
           });
         }
 
@@ -929,6 +1333,7 @@ export default function App() {
 
       const nowIso = new Date().toISOString();
       const delta = -params.amount;
+      const withdrawLocalId = `LDG-${Math.floor(1000 + Math.random() * 9000)}`;
 
       const uid = cloudUserIdRef.current;
       if (uid) {
@@ -938,6 +1343,8 @@ export default function App() {
           amount: params.amount,
           method: bankRef,
           reference: 'XN-WDR',
+        }).then((res) => {
+          if (res.ok && res.id) attachCloudId(withdrawLocalId, res.id);
         });
       }
 
@@ -948,7 +1355,7 @@ export default function App() {
           cashBalance: nextCash,
           ledger: [
             {
-              id: `LDG-${Math.floor(1000 + Math.random() * 9000)}`,
+              id: withdrawLocalId,
               type: 'withdrawal',
               amount: delta,
               description: 'ACH Bank Withdrawal',
@@ -964,10 +1371,10 @@ export default function App() {
 
       return {
         ok: true,
-        message: `Withdrawal of ${formatCurrency(params.amount)} to ${bankRef} submitted — pending admin approval.`,
+        message: `Withdrawal of ${formatCurrency(params.amount)} to ${bankRef} submitted — pending awaiting approval.`,
       };
     },
-    [broker.bankAccounts, broker.cashBalance, reservedCash]
+    [broker.bankAccounts, broker.cashBalance, reservedCash, accountFrozen, frozenReason, accountMode, attachCloudId]
   );
 
   const handleApproveDeposit = useCallback((ledgerId: string) => {
@@ -1013,20 +1420,50 @@ export default function App() {
     []
   );
 
-  const handleResetAccount = useCallback((mode: 'starter' | 'fresh') => {
-    setBroker(
-      mode === 'fresh' ? createFreshCashBrokerState() : createInitialBrokerState()
-    );
-  }, []);
+  const handleResetAccount = useCallback(
+    (mode: 'starter' | 'fresh') => {
+      setBroker(accountMode === 'demo' ? createDemoBrokerState() : createEmptyBrokerState());
+    },
+    [accountMode]
+  );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] overflow-x-hidden">
       <TopNav
         activePage={activePage}
         onNavigate={navigateTo}
         user={user}
         onLogout={handleLogout}
+        accountMode={accountMode}
+        onSwitchAccount={handleSwitchAccount}
       />
+
+      {(user && (accountMode === 'demo' || accountFrozen)) && (
+        <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 pt-3">
+          {accountFrozen ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs sm:text-sm text-rose-800">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span className="font-semibold">Account frozen.</span>
+              <span>
+                {frozenReason || 'Your account is under KYC review. Deposits, withdrawals and trading are locked.'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs sm:text-sm text-amber-900">
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className="font-semibold">Demo account</span>
+              <span>Virtual practice balance · withdrawals locked.</span>
+              <button
+                type="button"
+                onClick={() => handleSwitchAccount('real')}
+                className="ml-auto rounded-lg bg-amber-900 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-800 cursor-pointer"
+              >
+                Switch to real account
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activePage === 'home' && (
@@ -1095,21 +1532,31 @@ export default function App() {
             onSaveKyc={(next) => {
               setKyc(next);
               const uid = cloudUserIdRef.current;
-              if (uid) void pushProfile(uid, { hasCompletedProfile: next.status === 'verified' });
+              if (uid) {
+                void pushKyc({
+                  userId: uid,
+                  status: next.status === 'verified' ? 'verified' : 'pending',
+                  documentDataUrl: next.documentDataUrl,
+                  documentName: next.documentName,
+                });
+              }
             }}
             stocks={stocks}
             positions={broker.positions}
             cashBalance={broker.cashBalance}
             reservedCash={reservedCash}
-            isLiveQuotes={isLiveQuotes}
-            onToggleLiveQuotes={() => setIsLiveQuotes((v) => !v)}
             onUpdateProfile={handleUpdateProfile}
-            onResetAccount={handleResetAccount}
+            onChangePassword={handleChangePassword}
             onLogout={handleLogout}
             onOpenAuth={(mode) => navigateTo(mode)}
             onTradeSymbol={handleTradeSymbol}
+            onClosePosition={handleClosePosition}
             onBrowseMarkets={() => navigateTo('markets')}
             onNavigateFunding={() => navigateTo('funding')}
+            accountMode={accountMode}
+            accountFrozen={accountFrozen}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
           />
         )}
 
@@ -1129,14 +1576,24 @@ export default function App() {
             reservedCash={reservedCash}
             bankAccounts={broker.bankAccounts}
             ledger={broker.ledger}
+            custody={custody}
+            accountMode={accountMode}
+            accountFrozen={accountFrozen}
             onTransferFunds={handleTransferFunds}
-            onApproveDeposit={handleApproveDeposit}
             onAddBankAccount={handleAddBankAccount}
             onGoToTrade={() => navigateTo('trade')}
             onGoToPortfolio={() => navigateTo('portfolio')}
           />
         )}
       </main>
+
+      {user && (
+        <SupportChat
+          userId={cloudUserIdRef.current}
+          userName={user.name}
+          email={user.email}
+        />
+      )}
 
       <footer className="border-t border-slate-800 bg-gradient-to-r from-[#070D19] via-[#0B1221] to-[#0F1E3D] text-slate-300 mt-auto">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs sm:text-sm">

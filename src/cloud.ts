@@ -29,6 +29,12 @@ export interface CloudProfile {
   last_name: string;
   country: string;
   has_completed_profile: boolean;
+  kyc_status?: string | null;
+  kyc_document_name?: string | null;
+  kyc_submitted_at?: string | null;
+  kyc_rejection_reason?: string | null;
+  account_frozen?: boolean | null;
+  frozen_reason?: string | null;
 }
 
 export interface CloudSnapshot {
@@ -37,6 +43,12 @@ export interface CloudSnapshot {
   reservedCash: number;
   positions: Record<string, { symbol: string; shares: number; avgCost: number }>;
   bonusAwarded: boolean;
+  kycStatus: string;
+  kycDocumentName: string | null;
+  kycSubmittedAt: string | null;
+  kycRejectionReason: string | null;
+  accountFrozen: boolean;
+  frozenReason: string;
 }
 
 /* ============================================================
@@ -70,6 +82,20 @@ export const signInCloud = async (email: string, password: string) => {
 export const signOutCloud = async () => {
   if (!isSupabaseConfigured()) return;
   await supabase.auth.signOut();
+};
+
+export const updateCloudPassword = async (newPassword: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  if (newPassword.length < 6) {
+    return { ok: false as const, message: 'Password must be at least 6 characters.' };
+  }
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    return { ok: false as const, message: 'Please sign in again before changing your password.' };
+  }
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
 };
 
 /**
@@ -147,6 +173,12 @@ export const pullSnapshot = async (userId: string): Promise<CloudSnapshot | null
     reservedCash: Number(balanceRes.data?.reserved_cash ?? 0),
     positions,
     bonusAwarded: (bonusRes.data?.length ?? 0) > 0,
+    kycStatus: String(profileRes.data?.kyc_status ?? 'unverified'),
+    kycDocumentName: (profileRes.data?.kyc_document_name as string | null) ?? null,
+    kycSubmittedAt: (profileRes.data?.kyc_submitted_at as string | null) ?? null,
+    kycRejectionReason: (profileRes.data?.kyc_rejection_reason as string | null) ?? null,
+    accountFrozen: Boolean(profileRes.data?.account_frozen),
+    frozenReason: String(profileRes.data?.frozen_reason ?? ''),
   };
 };
 
@@ -242,18 +274,22 @@ export const submitDepositRequest = async (params: {
   notes?: string;
 }) => {
   if (!isSupabaseConfigured()) return notConfigured;
-  const { error } = await supabase.from('ledger').insert({
-    user_id: params.userId,
-    type: 'deposit',
-    amount: params.amount,
-    status: 'pending',
-    method: params.method ?? 'bank',
-    reference: params.reference ?? null,
-    notes: params.notes ?? null,
-    cash_balance: 0,
-  });
+  const { data, error } = await supabase
+    .from('ledger')
+    .insert({
+      user_id: params.userId,
+      type: 'deposit',
+      amount: params.amount,
+      status: 'pending',
+      method: params.method ?? 'bank',
+      reference: params.reference ?? null,
+      notes: params.notes ?? null,
+      cash_balance: 0,
+    })
+    .select('id')
+    .single();
   if (error) return { ok: false as const, message: error.message };
-  return { ok: true as const };
+  return { ok: true as const, id: data?.id as string | undefined };
 };
 
 export const submitWithdrawalRequest = async (params: {
@@ -263,17 +299,59 @@ export const submitWithdrawalRequest = async (params: {
   reference?: string;
 }) => {
   if (!isSupabaseConfigured()) return notConfigured;
-  const { error } = await supabase.from('ledger').insert({
-    user_id: params.userId,
-    type: 'withdrawal',
-    amount: params.amount,
-    status: 'pending',
-    method: params.method ?? 'bank',
-    reference: params.reference ?? null,
-    cash_balance: 0,
-  });
+  const { data, error } = await supabase
+    .from('ledger')
+    .insert({
+      user_id: params.userId,
+      type: 'withdrawal',
+      amount: params.amount,
+      status: 'pending',
+      method: params.method ?? 'bank',
+      reference: params.reference ?? null,
+      cash_balance: 0,
+    })
+    .select('id')
+    .single();
   if (error) return { ok: false as const, message: error.message };
-  return { ok: true as const };
+  return { ok: true as const, id: data?.id as string | undefined };
+};
+
+export interface MyLedgerRow {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  method: string | null;
+  reference: string | null;
+  notes: string | null;
+  cashBalance: number;
+  createdAt: string;
+}
+
+/** The signed-in user's own ledger rows (RLS-scoped). */
+export const fetchMyLedger = async (userId: string) => {
+  if (!isSupabaseConfigured()) return { ok: false as const, rows: [] as MyLedgerRow[] };
+  const { data, error } = await supabase
+    .from('ledger')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) return { ok: false as const, rows: [] as MyLedgerRow[], message: error.message };
+  return {
+    ok: true as const,
+    rows: (data ?? []).map((r) => ({
+      id: String(r.id),
+      type: String(r.type ?? ''),
+      amount: Number(r.amount ?? 0),
+      status: String(r.status ?? 'pending'),
+      method: (r.method as string | null) ?? null,
+      reference: (r.reference as string | null) ?? null,
+      notes: (r.notes as string | null) ?? null,
+      cashBalance: Number(r.cash_balance ?? 0),
+      createdAt: String(r.created_at ?? new Date().toISOString()),
+    })),
+  };
 };
 
 /* ============================================================
@@ -298,6 +376,11 @@ export interface AdminUserRow {
   lastName: string;
   country: string;
   kycVerified: boolean;
+  kycStatus: string;
+  kycDocumentName: string | null;
+  kycSubmittedAt: string | null;
+  accountFrozen: boolean;
+  frozenReason: string;
   cashBalance: number;
   reservedCash: number;
   positions: number;
@@ -336,7 +419,12 @@ export const adminListUsers = async () => {
     firstName: p.first_name ?? '',
     lastName: p.last_name ?? '',
     country: p.country ?? '',
-    kycVerified: Boolean(p.has_completed_profile),
+    kycVerified: p.kyc_status ? p.kyc_status === 'verified' : Boolean(p.has_completed_profile),
+    kycStatus: p.kyc_status ?? (p.has_completed_profile ? 'verified' : 'unverified'),
+    kycDocumentName: p.kyc_document_name ?? null,
+    kycSubmittedAt: p.kyc_submitted_at ?? null,
+    accountFrozen: Boolean(p.account_frozen),
+    frozenReason: p.frozen_reason ?? '',
     cashBalance: balances.get(p.user_id)?.cash ?? 0,
     reservedCash: balances.get(p.user_id)?.reserved ?? 0,
     positions: positionCounts.get(p.user_id) ?? 0,
@@ -394,12 +482,204 @@ export const adminAdjustBalance = async (
   return { ok: true as const, newBalance: Number(data ?? 0) };
 };
 
-export const adminSetKyc = async (userId: string, verified: boolean) => {
+export const adminSetKyc = async (
+  userId: string,
+  status: 'verified' | 'rejected' | 'unverified',
+  reason?: string
+) => {
   if (!isSupabaseConfigured()) return notConfigured;
   const { error } = await admin()
     .from('profiles')
-    .update({ has_completed_profile: verified })
+    .update({
+      kyc_status: status,
+      kyc_rejection_reason: status === 'rejected' ? reason ?? 'Document could not be verified.' : null,
+      kyc_reviewed_at: new Date().toISOString(),
+    })
     .eq('user_id', userId);
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+export const adminGetKycDocument = async (userId: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { data, error } = await admin()
+    .from('profiles')
+    .select('kyc_document, kyc_document_name, kyc_status, kyc_submitted_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return { ok: false as const, message: error.message };
+  return {
+    ok: true as const,
+    document: (data?.kyc_document as string | null) ?? null,
+    name: (data?.kyc_document_name as string | null) ?? null,
+    status: (data?.kyc_status as string | null) ?? 'unverified',
+    submittedAt: (data?.kyc_submitted_at as string | null) ?? null,
+  };
+};
+
+export const adminSetFrozen = async (userId: string, frozen: boolean, reason?: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { error } = await admin()
+    .from('profiles')
+    .update({
+      account_frozen: frozen,
+      frozen_reason: frozen ? reason ?? 'Account under review.' : null,
+    })
+    .eq('user_id', userId);
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+/* ============================================================
+ * KYC SUBMISSION (user side)
+ * ============================================================ */
+
+export const pushKyc = async (params: {
+  userId: string;
+  status: 'pending' | 'verified' | 'unverified';
+  documentDataUrl?: string;
+  documentName?: string;
+}) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const payload: Record<string, unknown> = {
+    kyc_status: params.status,
+    kyc_submitted_at: new Date().toISOString(),
+    kyc_rejection_reason: null,
+  };
+  if (params.documentDataUrl) {
+    payload.kyc_document = params.documentDataUrl;
+    payload.kyc_document_name = params.documentName ?? 'id-document.jpg';
+  }
+  const { error } = await supabase
+    .from('profiles')
+    .update(payload)
+    .eq('user_id', params.userId);
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+/* ============================================================
+ * LIVE SUPPORT CHAT
+ * ============================================================ */
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  sender: 'user' | 'agent';
+  message: string;
+  readStatus: boolean;
+  createdAt: string;
+}
+
+export interface ChatThread {
+  userId: string;
+  email: string;
+  name: string;
+  lastMessage: string;
+  lastAt: string;
+  unread: number;
+}
+
+const mapChat = (row: Record<string, unknown>): ChatMessage => ({
+  id: String(row.id),
+  userId: String(row.user_id),
+  sender: row.sender === 'agent' ? 'agent' : 'user',
+  message: String(row.message ?? ''),
+  readStatus: Boolean(row.read_status),
+  createdAt: String(row.created_at ?? new Date().toISOString()),
+});
+
+export const fetchChatMessages = async (userId: string) => {
+  if (!isSupabaseConfigured()) return { ok: false as const, messages: [] as ChatMessage[] };
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(200);
+  if (error) return { ok: false as const, messages: [] as ChatMessage[], message: error.message };
+  return { ok: true as const, messages: (data ?? []).map(mapChat) };
+};
+
+export const sendChatMessage = async (userId: string, message: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { error } = await supabase
+    .from('chat_messages')
+    .insert({ user_id: userId, sender: 'user', message });
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+export const adminListChatThreads = async () => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const db = admin();
+  const [messagesRes, profilesRes] = await Promise.all([
+    db.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(600),
+    db.from('profiles').select('user_id, email, first_name, last_name'),
+  ]);
+  if (messagesRes.error) return { ok: false as const, message: messagesRes.error.message };
+
+  const profiles = new Map<string, { email: string; name: string }>();
+  for (const p of profilesRes.data ?? []) {
+    profiles.set(p.user_id, {
+      email: p.email ?? '',
+      name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim(),
+    });
+  }
+
+  const threads = new Map<string, ChatThread>();
+  for (const row of messagesRes.data ?? []) {
+    const uid = row.user_id as string;
+    const existing = threads.get(uid);
+    if (!existing) {
+      const p = profiles.get(uid);
+      threads.set(uid, {
+        userId: uid,
+        email: p?.email ?? '',
+        name: p?.name ?? '',
+        lastMessage: String(row.message ?? ''),
+        lastAt: String(row.created_at ?? ''),
+        unread: 0,
+      });
+    }
+    if (row.sender === 'user' && !row.read_status) {
+      const t = threads.get(uid)!;
+      t.unread += 1;
+    }
+  }
+
+  return { ok: true as const, threads: [...threads.values()] };
+};
+
+export const adminFetchChatThread = async (userId: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { data, error } = await admin()
+    .from('chat_messages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(300);
+  if (error) return { ok: false as const, message: error.message, messages: [] as ChatMessage[] };
+  return { ok: true as const, messages: (data ?? []).map(mapChat) };
+};
+
+export const adminSendChatReply = async (userId: string, message: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { error } = await admin()
+    .from('chat_messages')
+    .insert({ user_id: userId, sender: 'agent', message, read_status: true });
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+export const adminMarkChatRead = async (userId: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { error } = await admin()
+    .from('chat_messages')
+    .update({ read_status: true })
+    .eq('user_id', userId)
+    .eq('sender', 'user')
+    .eq('read_status', false);
   if (error) return { ok: false as const, message: error.message };
   return { ok: true as const };
 };
@@ -551,6 +831,51 @@ export const adminSetWelcomeBonus = async (amount: number, enabled: boolean) => 
       {
         key: 'welcome_bonus',
         value: { amount, enabled },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    );
+  if (error) return { ok: false as const, message: error.message };
+  return { ok: true as const };
+};
+
+/* ============================================================
+ * CUSTODY DEPOSIT DETAILS
+ * ============================================================ */
+
+export interface CustodySettings {
+  bankName: string;
+  accountNumber: string;
+  routingNumber: string;
+  referencePrefix: string;
+}
+
+export const DEFAULT_CUSTODY_SETTINGS: CustodySettings = {
+  bankName: 'Xena Clearing Custody',
+  accountNumber: '8842 9104 7731',
+  routingNumber: '021000021',
+  referencePrefix: 'XN-DEP',
+};
+
+export const getCustodySettings = async (): Promise<CustodySettings> => {
+  if (!isSupabaseConfigured()) return DEFAULT_CUSTODY_SETTINGS;
+  const { data } = await admin()
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'custody_account')
+    .maybeSingle();
+  const value = (data?.value ?? {}) as Partial<CustodySettings>;
+  return { ...DEFAULT_CUSTODY_SETTINGS, ...value };
+};
+
+export const adminSetCustodySettings = async (settings: CustodySettings) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { error } = await admin()
+    .from('platform_settings')
+    .upsert(
+      {
+        key: 'custody_account',
+        value: settings,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'key' }

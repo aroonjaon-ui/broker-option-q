@@ -9,7 +9,7 @@ export type PageId =
   | 'complete-profile'
   | 'admin';
 
-export type KycStatus = 'unverified' | 'verified';
+export type KycStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 
 export interface KycProfile {
   status: KycStatus;
@@ -20,7 +20,15 @@ export interface KycProfile {
   idLast4: string;
   address: string;
   verifiedAt?: string;
+  submittedAt?: string;
+  /** Base64 data URL of the uploaded ID document (image). */
+  documentDataUrl?: string;
+  documentName?: string;
+  rejectionReason?: string;
 }
+
+/** Real accounts hold actual cash; demo accounts use virtual funds. */
+export type AccountMode = 'real' | 'demo';
 
 export interface UserAccount {
   id: string;
@@ -114,7 +122,7 @@ export interface Order {
 
 export type LedgerType = 'deposit' | 'withdrawal' | 'trade_buy' | 'trade_sell';
 
-export type LedgerStatus = 'completed' | 'pending' | 'approved';
+export type LedgerStatus = 'completed' | 'pending' | 'approved' | 'rejected';
 
 export interface LedgerEntry {
   id: string;
@@ -125,6 +133,8 @@ export interface LedgerEntry {
   timestamp: string;
   balanceAfter: number;
   status?: LedgerStatus;
+  /** Supabase ledger row id, when this entry came from the cloud. */
+  cloudId?: string;
 }
 
 export interface BankAccount {

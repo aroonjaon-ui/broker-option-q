@@ -6,8 +6,17 @@ import {
   CheckCircle2,
   Download,
   ShieldCheck,
+  Upload,
+  X,
 } from 'lucide-react';
-import { KycProfile, OrderSide, Position, Stock, UserAccount } from '../types/broker';
+import {
+  AccountMode,
+  KycProfile,
+  OrderSide,
+  Position,
+  Stock,
+  UserAccount,
+} from '../types/broker';
 import {
   downloadCsv,
   formatCurrency,
@@ -24,15 +33,18 @@ interface PortfolioPageProps {
   positions: Record<string, Position>;
   cashBalance: number;
   reservedCash: number;
-  isLiveQuotes: boolean;
-  onToggleLiveQuotes: () => void;
   onUpdateProfile: (name: string, email: string) => void;
-  onResetAccount: (mode: 'starter' | 'fresh') => void;
+  onChangePassword: (newPassword: string) => Promise<{ ok: boolean; message?: string }>;
   onLogout: () => void;
   onOpenAuth: (mode: 'login' | 'signup') => void;
   onTradeSymbol: (symbol: string, side: OrderSide) => void;
+  onClosePosition: (symbol: string) => void;
   onBrowseMarkets: () => void;
   onNavigateFunding: () => void;
+  accountMode: AccountMode;
+  accountFrozen: boolean;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
 function getInitials(name?: string): string {
@@ -50,21 +62,29 @@ export default function PortfolioPage({
   positions,
   cashBalance,
   reservedCash,
-  isLiveQuotes,
-  onToggleLiveQuotes,
   onUpdateProfile,
-  onResetAccount,
+  onChangePassword,
   onLogout,
   onOpenAuth,
   onTradeSymbol,
+  onClosePosition,
   onBrowseMarkets,
   onNavigateFunding,
+  accountMode,
+  accountFrozen,
+  theme,
+  onToggleTheme,
 }: PortfolioPageProps) {
   const [sortBy, setSortBy] = useState<'value' | 'pnl' | 'symbol'>('value');
   const [profileName, setProfileName] = useState(user?.name ?? '');
   const [profileEmail, setProfileEmail] = useState(user?.email ?? '');
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
-  const [confirmReset, setConfirmReset] = useState<'starter' | 'fresh' | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(
+    null
+  );
 
   // KYC Form State
   const [kycEditing, setKycEditing] = useState(kyc?.status !== 'verified');
@@ -77,6 +97,58 @@ export default function PortfolioPage({
   const [kycIdNumber, setKycIdNumber] = useState('');
   const [kycAddress, setKycAddress] = useState(kyc?.address ?? '');
   const [kycError, setKycError] = useState<string | null>(null);
+  const [kycDoc, setKycDoc] = useState<{ dataUrl: string; name: string } | null>(() => {
+    if (kyc?.documentDataUrl) {
+      return { dataUrl: kyc.documentDataUrl, name: kyc.documentName ?? 'ID document' };
+    }
+    return null;
+  });
+  const [kycReadBusy, setKycReadBusy] = useState(false);
+
+  const handleKycFile = (file: File | null | undefined) => {
+    setKycError(null);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setKycError('Please upload a photo of your ID (JPG, PNG or WEBP).');
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setKycError('That image is too large. Please upload a photo under 12 MB.');
+      return;
+    }
+    setKycReadBusy(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSide = 1100;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setKycReadBusy(false);
+          setKycError('Could not process that image. Try a different file.');
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        setKycDoc({ dataUrl, name: file.name });
+        setKycReadBusy(false);
+      };
+      img.onerror = () => {
+        setKycReadBusy(false);
+        setKycError('Could not read that image. Try a different file.');
+      };
+      img.src = String(reader.result ?? '');
+    };
+    reader.onerror = () => {
+      setKycReadBusy(false);
+      setKycError('Could not read that file. Try again.');
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     setProfileName(user?.name ?? '');
@@ -87,7 +159,7 @@ export default function PortfolioPage({
   }, [user, kyc?.fullName]);
 
   useEffect(() => {
-    if (kyc?.status === 'verified') {
+    if (kyc?.status === 'verified' || kyc?.status === 'pending') {
       setKycEditing(false);
     }
   }, [kyc?.status]);
@@ -213,6 +285,33 @@ export default function PortfolioPage({
     setSettingsMessage('Profile details updated.');
   };
 
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+    if (newPassword.length < 6) {
+      setPasswordMsg({ kind: 'error', text: 'Use at least 6 characters for your new password.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ kind: 'error', text: 'The two passwords do not match.' });
+      return;
+    }
+    setPasswordBusy(true);
+    const res = await onChangePassword(newPassword);
+    setPasswordBusy(false);
+    if (!res.ok) {
+      setPasswordMsg({ kind: 'error', text: res.message ?? 'Could not update the password.' });
+      return;
+    }
+    setNewPassword('');
+    setConfirmPassword('');
+    setSettingsMessage('Password updated successfully.');
+    setPasswordMsg({
+      kind: 'ok',
+      text: 'Password changed. Use your new password the next time you sign in.',
+    });
+  };
+
   const handleKycSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setKycError(null);
@@ -237,16 +336,22 @@ export default function PortfolioPage({
       setKycError('Enter your current residential address.');
       return;
     }
+    if (!kycDoc) {
+      setKycError('Upload a clear photo of your ID document so our compliance team can review it.');
+      return;
+    }
 
     onSaveKyc({
-      status: 'verified',
+      status: 'pending',
       fullName: cleanName,
       dateOfBirth: kycDob,
       country: kycCountry.trim() || 'United States',
       idType: kycIdType,
       idLast4: cleanId.slice(-4).toUpperCase(),
       address: cleanAddr,
-      verifiedAt: new Date().toISOString(),
+      submittedAt: new Date().toISOString(),
+      documentDataUrl: kycDoc.dataUrl,
+      documentName: kycDoc.name,
     });
     setKycIdNumber('');
     setKycEditing(false);
@@ -488,6 +593,15 @@ export default function PortfolioPage({
                           >
                             Sell
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => onClosePosition(h.symbol)}
+                            disabled={accountFrozen}
+                            className="px-3 py-1.5 font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            title="Sell the full position at market"
+                          >
+                            Close
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -563,6 +677,15 @@ export default function PortfolioPage({
                                 className="px-3 py-1.5 text-xs font-semibold text-[var(--destructive)] bg-gradient-to-r from-[var(--destructive-50)] to-[var(--destructive-100)]/75 border border-[var(--destructive)] rounded-lg hover:from-[var(--destructive-50)] hover:to-[var(--destructive-100)]/50 transition-all cursor-pointer"
                               >
                                 Sell
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onClosePosition(h.symbol)}
+                                disabled={accountFrozen}
+                                className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                title="Sell the full position at market"
+                              >
+                                Close
                               </button>
                             </div>
                           </td>
@@ -665,23 +788,52 @@ export default function PortfolioPage({
               <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-0.5">
                 {kyc?.status === 'verified'
                   ? `Verified · ${kyc.idType} ending in ${kyc.idLast4}`
-                  : 'Complete Know Your Customer (KYC) verification for full brokerage compliance.'}
+                  : kyc?.status === 'pending'
+                    ? 'Submitted · awaiting compliance review'
+                    : kyc?.status === 'rejected'
+                      ? 'Verification was not approved — please resubmit your document.'
+                      : 'Complete Know Your Customer (KYC) verification for full brokerage compliance.'}
               </p>
             </div>
           </div>
 
-          {kyc?.status === 'verified' && !kycEditing && (
+          {(kyc?.status === 'verified' || kyc?.status === 'pending') && !kycEditing && (
             <button
               type="button"
               onClick={() => setKycEditing(true)}
               className="px-3.5 py-2 text-xs font-semibold text-[var(--muted)] bg-gradient-to-r from-[var(--subtle)] to-[var(--subtle)]/80 border border-[var(--border)] rounded-xl hover:from-[var(--white)]/10 hover:to-[var(--white)]/20 transition-all cursor-pointer"
             >
-              Update KYC Details
+              {kyc?.status === 'pending' ? 'Update submission' : 'Update KYC Details'}
             </button>
           )}
         </div>
 
-        {kyc?.status === 'verified' && !kycEditing ? (
+        {kyc?.status === 'pending' && !kycEditing ? (
+          <div className="pt-5">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+                <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                Pending · awaiting admin approval
+              </div>
+              <p className="mt-1.5 text-xs sm:text-sm text-amber-800 leading-relaxed">
+                Your identity document has been received and is queued for compliance review.
+                You will see <strong>KYC Verified</strong> as soon as an admin approves it.
+                {kyc.submittedAt ? ` Submitted ${formatTimestamp(kyc.submittedAt)}.` : ''}
+              </p>
+              {kyc.documentDataUrl && (
+                <a
+                  href={kyc.documentDataUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  View uploaded {kyc.documentName ?? 'ID document'}
+                </a>
+              )}
+            </div>
+          </div>
+        ) : kyc?.status === 'verified' && !kycEditing ? (
           <div className="pt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 text-xs sm:text-sm">
             <div>
               <div className="text-xs font-medium text-[var(--muted-foreground)]">Legal Full Name</div>
@@ -822,6 +974,60 @@ export default function PortfolioPage({
               </div>
             </div>
 
+            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--input)] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-[var(--foreground)]">
+                    Upload ID document photo
+                  </p>
+                  <p className="mt-0.5 text-[11px] sm:text-xs text-[var(--muted-foreground)]">
+                    Passport, driver&apos;s licence or national ID · JPG, PNG or WEBP · up to 12 MB.
+                  </p>
+                </div>
+                <span className="rounded-full bg-[var(--card)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--muted-foreground)] border border-[var(--border)]">
+                  Required
+                </span>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 rounded-xl bg-[var(--card)] border border-[var(--border)] px-3.5 py-2 text-xs sm:text-sm font-semibold text-[var(--foreground)] hover:border-[var(--primary)] transition-colors cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  <span>{kycDoc ? 'Replace photo' : 'Choose photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleKycFile(e.target.files?.[0])}
+                  />
+                </label>
+
+                {kycReadBusy && (
+                  <span className="text-xs text-[var(--muted-foreground)]">Processing image…</span>
+                )}
+
+                {kycDoc && !kycReadBusy && (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={kycDoc.dataUrl}
+                      alt="ID document preview"
+                      className="h-10 w-14 rounded-lg border border-[var(--border)] object-cover"
+                    />
+                    <span className="max-w-[160px] truncate text-xs font-medium text-[var(--secondary)]">
+                      {kycDoc.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setKycDoc(null)}
+                      aria-label="Remove uploaded document"
+                      className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--subtle)] hover:text-[var(--foreground)] cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {kycError && (
               <div
                 role="alert"
@@ -837,9 +1043,9 @@ export default function PortfolioPage({
                 type="submit"
                 className="px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] rounded-xl shadow-sm hover:from-[var(--primary-100)] hover:via-[var(--secondary-100)] hover:to-[var(--accent-100)] transition-all cursor-pointer"
               >
-                Submit KYC Verification
+                Submit for review
               </button>
-              {kyc?.status === 'verified' && (
+              {(kyc?.status === 'verified' || kyc?.status === 'pending') && (
                 <button
                   type="button"
                   onClick={() => setKycEditing(false)}
@@ -939,76 +1145,102 @@ export default function PortfolioPage({
               </div>
             )}
 
-            {/* Preferences */}
+            {/* Appearance */}
             <div className="lg:col-span-6 space-y-4 lg:border-l lg:border-[var(--border)] lg:pl-6">
-              <h3 className="text-xs sm:text-sm font-bold text-[var(--muted-foreground)]">Preferences & Reset</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-[var(--muted-foreground)]">
+                Appearance
+              </h3>
 
-              <div className="flex items-center justify-between gap-4 py-2.5 border-b border-[var(--border)]">
+              <div className="flex items-center justify-between gap-4 py-2.5">
                 <div>
-                  <div className="text-xs sm:text-sm font-semibold text-[var(--muted-foreground)]">Live Price Streaming</div>
+                  <div className="text-xs sm:text-sm font-semibold text-[var(--muted-foreground)]">
+                    Dark mode
+                  </div>
                   <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                    Real-time simulated updates for stock quotes and portfolio value
+                    Switch the platform to a low-light theme. Your choice is saved on this device.
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={onToggleLiveQuotes}
-                  className={`px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all whitespace-nowrap shrink-0 cursor-pointer ${
-                    isLiveQuotes
-                      ? 'bg-gradient-to-r from-[var(--secondary)] to-[var(--primary)]/80 border-[var(--secondary)] text-[var(--secondary)] hover:from-[var(--secondary-100)] hover:to-[var(--primary-100)]'
-                      : 'bg-gradient-to-r from-[var(--subtle)] to-[var(--subtle)]/80 border-[var(--border)] text-[var(--muted)] hover:from-[var(--white)]/20 hover:to-[var(--white)]/30'
+                  role="switch"
+                  aria-checked={theme === 'dark'}
+                  aria-label="Toggle dark mode"
+                  onClick={onToggleTheme}
+                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-[var(--primary)] border-[var(--primary)]'
+                      : 'bg-[var(--input)] border-[var(--border)]'
                   }`}
                 >
-                  {isLiveQuotes ? 'Live: On' : 'Live: Paused'}
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                      theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
                 </button>
               </div>
 
-              <div className="pt-1">
-                <div className="text-xs sm:text-sm font-semibold text-[var(--muted-foreground)] mb-2">Account Reset</div>
-                {confirmReset ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs sm:text-sm text-[var(--muted-foreground)] mr-1">
-                      {confirmReset === 'fresh'
-                        ? 'Reset to $100,000 cash?'
-                        : 'Restore starter portfolio?'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onResetAccount(confirmReset);
-                        setConfirmReset(null);
-                        setSettingsMessage('Account reset complete.');
-                      }}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--destructive)] to-[var(--destructive)]/50 rounded-xl shadow-xs hover:from-[var(--destructive-100)] hover:to-[var(--destructive-50)] transition-all cursor-pointer"
+              {accountMode === 'demo' && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  You are on the demo account with virtual funds. Withdrawals are locked — switch to
+                  your real account in the header.
+                </p>
+              )}
+
+              <div className="pt-4 border-t border-[var(--border)]">
+                <h4 className="text-xs sm:text-sm font-bold text-[var(--muted-foreground)]">
+                  Change password
+                </h4>
+                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                  Update the password you use to sign in to your account.
+                </p>
+
+                <form onSubmit={handlePasswordSubmit} className="mt-3 space-y-2.5">
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordMsg(null);
+                    }}
+                    placeholder="New password (min. 6 characters)"
+                    className="w-full px-3 py-2 text-sm text-[var(--foreground)] bg-[var(--input)] border border-[var(--border)] rounded-xl focus:bg-[var(--card)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+                  />
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordMsg(null);
+                    }}
+                    placeholder="Confirm new password"
+                    className="w-full px-3 py-2 text-sm text-[var(--foreground)] bg-[var(--input)] border border-[var(--border)] rounded-xl focus:bg-[var(--card)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15"
+                  />
+
+                  {passwordMsg && (
+                    <p
+                      className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                        passwordMsg.kind === 'ok'
+                          ? 'border-[var(--success-border)] bg-[var(--success-bg)] text-[var(--success-fg)]'
+                          : 'border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-[var(--destructive-fg)]'
+                      }`}
                     >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmReset(null)}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-[var(--muted)] bg-gradient-to-r from-[var(--subtle)] to-[var(--subtle)]/80 rounded-xl hover:from-[var(--white)]/20 hover:to-[var(--white)]/30 transition-all cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmReset('fresh')}
-                      className="px-3.5 py-2 text-xs font-semibold text-[var(--muted)] bg-gradient-to-r from-[var(--subtle)] to-[var(--primary)]/50 border border-[var(--primary)]/50 rounded-xl hover:from-[var(--subtle)] hover:to-[var(--primary)]/75 transition-all cursor-pointer"
-                    >
-                      Reset to $100,000 Cash
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmReset('starter')}
-                      className="px-3.5 py-2 text-xs font-semibold text-[var(--muted)] bg-gradient-to-r from-[var(--subtle)] to-[var(--primary)]/50 border border-[var(--primary)]/50 rounded-xl hover:from-[var(--subtle)] hover:to-[var(--primary)]/75 transition-all cursor-pointer"
-                    >
-                      Restore Starter Portfolio
-                    </button>
-                  </div>
-                )}
+                      {passwordMsg.text}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={passwordBusy}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-xl hover:from-[var(--primary-500)] hover:to-[var(--secondary-500)] disabled:opacity-60 transition-all cursor-pointer"
+                  >
+                    {passwordBusy ? 'Updating…' : 'Update password'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
