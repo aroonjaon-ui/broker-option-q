@@ -129,6 +129,8 @@ export default function PlatformModals({
     }, 3250);
   };
 
+  if (!activeModal) return null;
+
   return (
     <div
       role="dialog"
