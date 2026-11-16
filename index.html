@@ -61,14 +61,28 @@
           } catch (e) {}
         }
 
-        window.addEventListener('error', function (event) {
-          if (event && (event.message || event.error)) {
-            report(
-              'Xena Broker failed to start',
-              (event.error && event.error.stack) || event.message
-            );
-          }
-        });
+        window.addEventListener(
+          'error',
+          function (event) {
+            var target = event && event.target;
+            // A failed <script>/<link>/<img> load only reaches window in capture phase.
+            if (target && target !== window && target.tagName) {
+              report(
+                'Xena Broker could not load a required file',
+                target.tagName + ' failed to load:\n' + (target.src || target.href || 'unknown URL') +
+                  '\n\nThis is usually a stale cached page. Hard refresh with Ctrl + Shift + R.'
+              );
+              return;
+            }
+            if (event && (event.message || event.error)) {
+              report(
+                'Xena Broker failed to start',
+                (event.error && event.error.stack) || event.message
+              );
+            }
+          },
+          true
+        );
 
         window.addEventListener('unhandledrejection', function (event) {
           var reason = event && event.reason;

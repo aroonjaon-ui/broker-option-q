@@ -451,13 +451,13 @@
   --chart-text: #D1D4DC;
 
   /* Dialogs */
-  --dialog-bg: #FFFFFF;
-  --dialog-blur: 12px;
+  --dialog-bg: rgba(2, 10, 20, 0.6);
+  --dialog-blur: 8px;
 
   /* Modal extras */
   --modal-bg-hover: #F8FAFC;
   --modal-bonus-fg: #B45309;
-  --modal-button-alt: #F1F5F9;
+  --modal-button-alt: #475569;
   --modal-button-bg: #3B82F6;
   --modal-button-bg-hover: #2563EB;
   --modal-button-fg: #FFFFFF;
