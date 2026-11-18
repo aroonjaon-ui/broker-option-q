@@ -886,6 +886,17 @@ export default function App() {
 
   const handleLogin = useCallback(
     async (email: string, password: string): Promise<{ ok: boolean; message?: string }> => {
+      // Admin credentials entered on the home-page login go straight to the admin console.
+      if (email.trim().toLowerCase() === 'admin@xenabroker.com' && password === 'admin123') {
+        try {
+          sessionStorage.setItem('xena_admin_session_v1', '1');
+        } catch {
+          /* ignore */
+        }
+        navigateTo('admin');
+        return { ok: true };
+      }
+
       const local = credentials.find(
         (c) => c.user.email.toLowerCase() === email && c.password === password
       );
