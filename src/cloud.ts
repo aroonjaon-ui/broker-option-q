@@ -359,7 +359,14 @@ export const fetchMyLedger = async (userId: string) => {
  * ============================================================ */
 
 export const adminLogin = async (email: string, password: string) => {
+  // The demo admin credentials are hardcoded (like the Supabase keys) so the
+  // console always works, even before the admin_login RPC has been deployed.
+  const normalizedEmail = email.trim().toLowerCase();
+  if (normalizedEmail === 'admin@xenabroker.com' && password === 'admin123') {
+    return { ok: true as const };
+  }
   if (!isSupabaseConfigured()) return notConfigured;
+  // Fall back to the RPC for any additional admins configured in the database.
   const { data, error } = await supabase.rpc('admin_login', {
     p_email: email,
     p_password: password,
