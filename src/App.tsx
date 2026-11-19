@@ -347,6 +347,13 @@ export default function App() {
   const [frozenReason, setFrozenReason] = useState('');
   const [custody, setCustody] = useState<CustodySettings>(DEFAULT_CUSTODY_SETTINGS);
   const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
+  const [adminAuthed, setAdminAuthed] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('xena_admin_session_v1') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
   const cloudUserIdRef = useRef<string | null>(null);
   const lastLocalMoneyChangeRef = useRef<number>(0);
@@ -893,6 +900,7 @@ export default function App() {
         } catch {
           /* ignore */
         }
+        setAdminAuthed(true);
         navigateTo('admin');
         return { ok: true };
       }
@@ -1514,7 +1522,9 @@ export default function App() {
           />
         )}
 
-        {activePage === 'admin' && <AdminPage onExit={() => navigateTo('home')} />}
+        {activePage === 'admin' && (
+          <AdminPage onExit={() => navigateTo('home')} onAuthChange={setAdminAuthed} />
+        )}
 
         {activePage === 'trade' && (
           <TradePage
@@ -1658,13 +1668,15 @@ export default function App() {
             >
               About Platform
             </button>
-            <button
-              type="button"
-              onClick={() => navigateTo('admin')}
-              className="text-slate-500 hover:text-white transition-colors cursor-pointer"
-            >
-              Admin
-            </button>
+            {adminAuthed && (
+              <button
+                type="button"
+                onClick={() => navigateTo('admin')}
+                className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+              >
+                Admin
+              </button>
+            )}
             {!user && (
               <>
                 <button

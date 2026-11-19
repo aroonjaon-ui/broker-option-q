@@ -66,6 +66,7 @@ type AdminTab =
 
 interface AdminPageProps {
   onExit: () => void;
+  onAuthChange?: (authed: boolean) => void;
 }
 
 interface Stats {
@@ -105,7 +106,7 @@ function statusClasses(status: string): string {
   }
 }
 
-export default function AdminPage({ onExit }: AdminPageProps) {
+export default function AdminPage({ onExit, onAuthChange }: AdminPageProps) {
   const [authed, setAuthed] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem(SESSION_KEY) === '1';
@@ -229,6 +230,7 @@ export default function AdminPage({ onExit }: AdminPageProps) {
       /* ignore */
     }
     setAuthed(true);
+    onAuthChange?.(true);
   };
 
   const handleLogout = () => {
@@ -238,6 +240,7 @@ export default function AdminPage({ onExit }: AdminPageProps) {
       /* ignore */
     }
     setAuthed(false);
+    onAuthChange?.(false);
     setPassword('');
   };
 

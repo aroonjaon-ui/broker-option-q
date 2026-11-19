@@ -65,8 +65,12 @@
           'error',
           function (event) {
             var target = event && event.target;
-            // A failed <script>/<link>/<img> load only reaches window in capture phase.
+            // A failed resource load only reaches window in capture phase.
+            // Only missing SCRIPT files can break the app. Fonts, stylesheets
+            // and images are cosmetic and must never blank the screen.
             if (target && target !== window && target.tagName) {
+              var tag = String(target.tagName).toUpperCase();
+              if (tag !== 'SCRIPT') return;
               report(
                 'Xena Broker could not load a required file',
                 target.tagName + ' failed to load:\n' + (target.src || target.href || 'unknown URL') +
