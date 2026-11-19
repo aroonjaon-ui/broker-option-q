@@ -3,17 +3,24 @@ import {
   ArrowUpRight,
   BadgeCheck,
   BarChart3,
+  BatteryFull,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
   Globe2,
   LineChart,
+  ListOrdered,
   Lock,
+  PieChart,
+  Search,
   ShieldCheck,
+  Signal,
   Sparkles,
   Star,
-  TrendingUp,
   Trophy,
+  User,
   Wallet,
+  Wifi,
   Zap,
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
@@ -169,6 +176,22 @@ export default function HomePage({
     : 0;
   const previewPct = previewStock ? (previewChange / previewStock.previousClose) * 100 : 0;
 
+  // Build a larger chart for the phone trading interface.
+  const chartData = previewStock?.sparkline?.length
+    ? previewStock.sparkline
+    : [3, 5, 4, 7, 6, 9, 8, 11, 10, 13];
+  const chartMin = Math.min(...chartData);
+  const chartMax = Math.max(...chartData);
+  const chartRange = chartMax - chartMin || 1;
+  const chartPts = chartData.map((val, idx) => ({
+    x: (idx / (chartData.length - 1)) * 280,
+    y: 96 - 8 - ((val - chartMin) / chartRange) * 80,
+  }));
+  const chartLine = chartPts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const chartArea = `0,96 ${chartLine} 280,96`;
+  const chartColor = previewChange >= 0 ? '#10B981' : '#F43F5E';
+  const lastPoint = chartPts[chartPts.length - 1];
+
   const ticker = [
     ...indices.slice(0, 4).map((i) => ({
       key: i.id,
@@ -188,17 +211,28 @@ export default function HomePage({
     <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-8">
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden bg-[#06182B] text-white">
-        <div
+        {/* Full-width header image — kept visible under a light tint */}
+        <img
+          src={tradingDeskImg}
+          alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute -top-32 right-0 h-[520px] w-[520px] rounded-full bg-emerald-500/15 blur-3xl"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-70"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-40 -left-24 h-[460px] w-[460px] rounded-full bg-sky-500/15 blur-3xl"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#06182B]/80 via-[#06182B]/65 to-[#06182B]/90"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]"
+          className="pointer-events-none absolute -top-32 right-0 h-[520px] w-[520px] rounded-full bg-emerald-500/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-40 -left-24 h-[460px] w-[460px] rounded-full bg-sky-500/10 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]"
         />
 
         <div className="relative max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 pt-14 pb-16 lg:pt-20 lg:pb-24 grid lg:grid-cols-[1.02fr_0.98fr] gap-12 lg:gap-16 items-center">
@@ -252,94 +286,177 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Mobile trading phone over a desk image */}
+          {/* Realistic mobile trading interface */}
           <div className="relative flex items-center justify-center py-4">
-            <img
-              src={tradingDeskImg}
-              alt="Trading markets from your phone"
-              className="absolute inset-0 h-full w-full rounded-[2.5rem] object-cover opacity-50"
-            />
-            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-tr from-[#06182B] via-[#06182B]/75 to-emerald-900/40" />
-            <div className="absolute -inset-5 rounded-[3rem] bg-gradient-to-tr from-emerald-500/25 via-transparent to-sky-500/25 blur-2xl" />
+            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/25 via-transparent to-sky-500/25 blur-3xl" />
 
-            {/* Phone frame */}
-            <div className="relative w-[268px] sm:w-[300px] rounded-[2.4rem] border-[6px] border-[#0A1420] bg-[#071726] p-2 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
-              <div className="mx-auto mb-1.5 h-4 w-24 rounded-b-2xl bg-[#0A1420]" />
-              <div className="overflow-hidden rounded-[1.7rem] bg-[#0B2237] p-4">
-                <div className="flex items-center justify-between">
+            <div className="relative w-[286px] sm:w-[318px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_35px_80px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/15">
+              <div className="overflow-hidden rounded-[2rem] bg-[#0A1624]">
+                {/* status bar */}
+                <div className="relative flex items-center justify-between px-4 pt-2.5 pb-1 text-[9px] font-semibold text-slate-300">
+                  <span className="w-16">9:41</span>
+                  <span className="absolute left-1/2 top-1.5 h-3.5 w-16 -translate-x-1/2 rounded-full bg-black" />
+                  <span className="flex items-center gap-1">
+                    <Signal className="h-2.5 w-2.5" />
+                    <Wifi className="h-2.5 w-2.5" />
+                    <BatteryFull className="h-3 w-3" />
+                  </span>
+                </div>
+
+                {/* app bar */}
+                <div className="flex items-center justify-between px-4 pb-2 pt-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-[11px] font-extrabold text-[#04231A]">
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-400 text-[10px] font-extrabold text-[#04231A]">
                       X
                     </span>
                     <span className="text-[11px] font-bold text-white">Xena</span>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
-                    <span className="h-1 w-1 rounded-full bg-emerald-400" /> Live
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-white/[0.07] px-2 py-1 text-[9px] font-semibold text-white">
+                      {previewStock?.symbol ?? 'AAPL'}
+                      <ChevronDown className="h-2.5 w-2.5 text-slate-400" />
+                    </span>
+                    <Search className="h-3.5 w-3.5 text-slate-400" />
+                  </div>
                 </div>
 
-                <div className="mt-4 rounded-xl border border-white/10 bg-[#081B2D] p-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-white">{previewStock?.symbol ?? 'AAPL'}</p>
-                      <p className="text-[9px] text-slate-400">{previewStock?.name ?? 'Apple Inc.'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono text-xs font-bold tabular-nums text-white">
-                        {formatCurrency(previewStock?.price ?? 0)}
-                      </p>
-                      <p
-                        className={`text-[10px] font-semibold tabular-nums ${
-                          previewChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {formatPercent(previewPct)}
-                      </p>
-                    </div>
+                {/* price header */}
+                <div className="px-4">
+                  <p className="text-[9px] text-slate-400">
+                    {previewStock?.name ?? 'Apple Inc.'} · NASDAQ
+                  </p>
+                  <div className="mt-0.5 flex items-end gap-2">
+                    <span className="font-mono text-[26px] font-bold leading-none tabular-nums text-white">
+                      {formatCurrency(previewStock?.price ?? 0)}
+                    </span>
+                    <span
+                      className={`mb-0.5 font-mono text-[10px] font-semibold tabular-nums ${
+                        previewChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {previewChange >= 0 ? '+' : ''}
+                      {formatPercent(previewPct)}
+                    </span>
                   </div>
-                  <div className="mt-2">
-                    {previewStock && (
-                      <MiniSparkline
-                        data={previewStock.sparkline}
-                        isPositive={previewChange >= 0}
-                        width={230}
-                        height={44}
+                  <p className="mt-0.5 text-[8px] text-slate-500">Today · USD</p>
+                </div>
+
+                {/* price chart */}
+                <div className="mt-2 px-2">
+                  <svg
+                    viewBox="0 0 280 96"
+                    preserveAspectRatio="none"
+                    className="h-[96px] w-full"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id="phoneChartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={chartColor} stopOpacity="0.35" />
+                        <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {[24, 48, 72].map((y) => (
+                      <line
+                        key={y}
+                        x1="0"
+                        x2="280"
+                        y1={y}
+                        y2={y}
+                        stroke="rgba(255,255,255,0.07)"
+                        strokeWidth="1"
+                      />
+                    ))}
+                    <polygon points={chartArea} fill="url(#phoneChartGrad)" />
+                    <polyline
+                      points={chartLine}
+                      fill="none"
+                      stroke={chartColor}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {lastPoint && (
+                      <circle
+                        cx={lastPoint.x}
+                        cy={lastPoint.y}
+                        r="3.5"
+                        fill={chartColor}
+                        stroke="#0A1624"
+                        strokeWidth="1.5"
                       />
                     )}
+                  </svg>
+                  <div className="flex justify-between px-1.5 text-[8px] text-slate-500">
+                    <span>09:30</span>
+                    <span>11:00</span>
+                    <span>12:30</span>
+                    <span>14:00</span>
+                    <span>16:00</span>
                   </div>
                 </div>
 
-                <div className="mt-3 space-y-1.5">
-                  {featured.slice(1, 4).map((stock) => {
-                    const pct = ((stock.price - stock.previousClose) / stock.previousClose) * 100;
-                    return (
-                      <div
-                        key={stock.symbol}
-                        className="flex items-center justify-between rounded-lg bg-white/[0.04] px-2.5 py-1.5"
-                      >
-                        <span className="text-[10px] font-semibold text-white">{stock.symbol}</span>
-                        <span
-                          className={`font-mono text-[10px] font-semibold tabular-nums ${
-                            pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                          }`}
-                        >
-                          {formatPercent(pct)}
-                        </span>
-                      </div>
-                    );
-                  })}
+                {/* timeframe + sections */}
+                <div className="mt-1.5 flex justify-between px-4 text-[9px] font-semibold">
+                  {['1D', '1W', '1M', '3M', '1Y', 'ALL'].map((tf, i) => (
+                    <span key={tf} className={i === 1 ? 'text-emerald-400' : 'text-slate-500'}>
+                      {tf}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-4 border-b border-white/10 px-4">
+                  {['Trade', 'Depth', 'Positions'].map((tab, i) => (
+                    <span
+                      key={tab}
+                      className={`-mb-px border-b-2 pb-1.5 text-[9px] font-semibold ${
+                        i === 0
+                          ? 'border-emerald-400 text-white'
+                          : 'border-transparent text-slate-500'
+                      }`}
+                    >
+                      {tab}
+                    </span>
+                  ))}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onTradeSymbol(previewStock?.symbol ?? 'AAPL', 'buy')}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-400 py-2 text-[11px] font-bold text-[#04231A] transition-all hover:brightness-105 cursor-pointer"
-                >
-                  <TrendingUp className="w-3.5 h-3.5" /> Trade {previewStock?.symbol ?? 'AAPL'}
-                </button>
+                {/* order ticket */}
+                <div className="px-4 pb-3 pt-2.5">
+                  <div className="flex rounded-lg bg-white/[0.06] p-0.5 text-[9px] font-bold">
+                    <span className="flex-1 rounded-md bg-emerald-500 py-1.5 text-center text-[#04231A]">
+                      Buy
+                    </span>
+                    <span className="flex-1 py-1.5 text-center text-slate-400">Sell</span>
+                  </div>
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                      <span className="text-[9px] text-slate-400">Order type</span>
+                      <span className="text-[9px] font-semibold text-white">Market</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                      <span className="text-[9px] text-slate-400">Quantity</span>
+                      <span className="font-mono text-[10px] font-semibold text-white">10 shares</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                      <span className="text-[9px] text-slate-400">Est. total</span>
+                      <span className="font-mono text-[10px] font-semibold text-white">
+                        {formatCurrency((previewStock?.price ?? 0) * 10)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onTradeSymbol(previewStock?.symbol ?? 'AAPL', 'buy')}
+                    className="mt-2.5 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-teal-400 py-2 text-[10px] font-bold text-[#04231A] transition-all hover:brightness-105 cursor-pointer"
+                  >
+                    Buy {previewStock?.symbol ?? 'AAPL'}
+                  </button>
+                </div>
 
-                <div className="mt-3 flex items-center justify-center gap-1 text-[9px] text-slate-500">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> Secure mobile trading
+                {/* bottom tab bar */}
+                <div className="flex items-center justify-around border-t border-white/10 bg-[#081322] py-2">
+                  <LineChart className="h-3.5 w-3.5 text-emerald-400" />
+                  <PieChart className="h-3.5 w-3.5 text-slate-500" />
+                  <ListOrdered className="h-3.5 w-3.5 text-slate-500" />
+                  <User className="h-3.5 w-3.5 text-slate-500" />
                 </div>
               </div>
             </div>
