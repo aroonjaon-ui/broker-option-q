@@ -155,8 +155,6 @@ export default function HomePage({
   user,
   stocks,
   indices = [],
-  cashBalance,
-  totalPortfolioValue,
   onNavigate,
   onTradeSymbol,
 }: HomePageProps) {
@@ -185,9 +183,6 @@ export default function HomePage({
       pct: ((s.price - s.previousClose) / s.previousClose) * 100,
     })),
   ];
-
-  const portfolioValue =
-    typeof totalPortfolioValue === 'number' ? totalPortfolioValue : cashBalance ?? 0;
 
   return (
     <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-8">
@@ -257,43 +252,44 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Dashboard preview */}
-          <div className="relative">
-            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-emerald-500/20 via-transparent to-sky-500/20 blur-2xl" />
-            <div className="relative rounded-2xl border border-white/12 bg-[#0B2237]/90 p-5 sm:p-6 shadow-2xl backdrop-blur">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Portfolio value
-                  </p>
-                  <p className="mt-1 font-mono text-2xl sm:text-3xl font-bold tabular-nums text-white">
-                    {formatCurrency(portfolioValue)}
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    {formatPercent(previewPct)}
-                    <span className="text-slate-500 font-normal">today</span>
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Live
-                </span>
-              </div>
+          {/* Mobile trading phone over a desk image */}
+          <div className="relative flex items-center justify-center py-4">
+            <img
+              src={tradingDeskImg}
+              alt="Trading markets from your phone"
+              className="absolute inset-0 h-full w-full rounded-[2.5rem] object-cover opacity-50"
+            />
+            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-tr from-[#06182B] via-[#06182B]/75 to-emerald-900/40" />
+            <div className="absolute -inset-5 rounded-[3rem] bg-gradient-to-tr from-emerald-500/25 via-transparent to-sky-500/25 blur-2xl" />
 
-              {previewStock && (
-                <div className="mt-5 rounded-xl border border-white/10 bg-[#081B2D] p-4">
-                  <div className="flex items-center justify-between">
+            {/* Phone frame */}
+            <div className="relative w-[268px] sm:w-[300px] rounded-[2.4rem] border-[6px] border-[#0A1420] bg-[#071726] p-2 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.9)] ring-1 ring-white/10">
+              <div className="mx-auto mb-1.5 h-4 w-24 rounded-b-2xl bg-[#0A1420]" />
+              <div className="overflow-hidden rounded-[1.7rem] bg-[#0B2237] p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-teal-500 text-[11px] font-extrabold text-[#04231A]">
+                      X
+                    </span>
+                    <span className="text-[11px] font-bold text-white">Xena</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                    <span className="h-1 w-1 rounded-full bg-emerald-400" /> Live
+                  </span>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/10 bg-[#081B2D] p-3">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-bold text-white">{previewStock.symbol}</p>
-                      <p className="text-[11px] text-slate-400">{previewStock.name}</p>
+                      <p className="text-xs font-bold text-white">{previewStock?.symbol ?? 'AAPL'}</p>
+                      <p className="text-[9px] text-slate-400">{previewStock?.name ?? 'Apple Inc.'}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono text-sm font-bold tabular-nums text-white">
-                        {formatCurrency(previewStock.price)}
+                      <p className="font-mono text-xs font-bold tabular-nums text-white">
+                        {formatCurrency(previewStock?.price ?? 0)}
                       </p>
                       <p
-                        className={`text-[11px] font-semibold tabular-nums ${
+                        className={`text-[10px] font-semibold tabular-nums ${
                           previewChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
@@ -301,54 +297,51 @@ export default function HomePage({
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <MiniSparkline
-                      data={previewStock.sparkline}
-                      isPositive={previewChange >= 0}
-                      width={280}
-                      height={56}
-                    />
+                  <div className="mt-2">
+                    {previewStock && (
+                      <MiniSparkline
+                        data={previewStock.sparkline}
+                        isPositive={previewChange >= 0}
+                        width={230}
+                        height={44}
+                      />
+                    )}
                   </div>
                 </div>
-              )}
 
-              <div className="mt-3 space-y-2">
-                {featured.slice(1, 4).map((stock) => {
-                  const pct = ((stock.price - stock.previousClose) / stock.previousClose) * 100;
-                  const up = pct >= 0;
-                  return (
-                    <div
-                      key={stock.symbol}
-                      className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2"
-                    >
-                      <span className="text-xs font-semibold text-white">{stock.symbol}</span>
-                      <span className="flex items-center gap-3">
-                        <span className="font-mono text-xs tabular-nums text-slate-300">
-                          {formatCurrency(stock.price)}
-                        </span>
+                <div className="mt-3 space-y-1.5">
+                  {featured.slice(1, 4).map((stock) => {
+                    const pct = ((stock.price - stock.previousClose) / stock.previousClose) * 100;
+                    return (
+                      <div
+                        key={stock.symbol}
+                        className="flex items-center justify-between rounded-lg bg-white/[0.04] px-2.5 py-1.5"
+                      >
+                        <span className="text-[10px] font-semibold text-white">{stock.symbol}</span>
                         <span
-                          className={`w-14 text-right font-mono text-[11px] font-semibold tabular-nums ${
-                            up ? 'text-emerald-400' : 'text-rose-400'
+                          className={`font-mono text-[10px] font-semibold tabular-nums ${
+                            pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
                           }`}
                         >
                           {formatPercent(pct)}
                         </span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {user && typeof cashBalance === 'number' && (
-                <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2.5">
-                  <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-200">
-                    <Wallet className="w-3.5 h-3.5" /> Buying power
-                  </span>
-                  <span className="font-mono text-sm font-bold tabular-nums text-emerald-200">
-                    {formatCurrency(cashBalance)}
-                  </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+
+                <button
+                  type="button"
+                  onClick={() => onTradeSymbol(previewStock?.symbol ?? 'AAPL', 'buy')}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-400 py-2 text-[11px] font-bold text-[#04231A] transition-all hover:brightness-105 cursor-pointer"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" /> Trade {previewStock?.symbol ?? 'AAPL'}
+                </button>
+
+                <div className="mt-3 flex items-center justify-center gap-1 text-[9px] text-slate-500">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> Secure mobile trading
+                </div>
+              </div>
             </div>
           </div>
         </div>

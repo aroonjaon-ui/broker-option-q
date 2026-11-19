@@ -16,6 +16,7 @@ const NAV_ITEMS: { id: PageId; label: string }[] = [
   { id: 'trade', label: 'Trade' },
   { id: 'portfolio', label: 'Portfolio' },
   { id: 'markets', label: 'Markets' },
+  { id: 'news', label: 'News' },
   { id: 'funding', label: 'Funding' },
 ];
 

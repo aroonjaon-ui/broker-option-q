@@ -10,6 +10,7 @@ import CompleteProfile from './pages/CompleteProfile';
 import TradePage from './pages/TradePage';
 import PortfolioPage from './pages/PortfolioPage';
 import MarketsPage from './pages/MarketsPage';
+import NewsPage from './pages/NewsPage';
 import FundingPage from './pages/FundingPage';
 import AdminPage from './pages/AdminPage';
 import {
@@ -767,7 +768,7 @@ export default function App() {
   }, [accountMode, applyCloudKyc, hydrateLedger]);
 
   const navigateTo = useCallback((page: PageId) => {
-    const PUBLIC_PAGES: PageId[] = ['home', 'login', 'signup', 'admin'];
+    const PUBLIC_PAGES: PageId[] = ['home', 'login', 'signup', 'admin', 'news'];
     // Members-only area: visitors must create an account or log in first.
     if (!userRef.current && !PUBLIC_PAGES.includes(page)) {
       setActivePage('login');
@@ -1590,6 +1591,8 @@ export default function App() {
           />
         )}
 
+        {activePage === 'news' && <NewsPage onNavigate={navigateTo} />}
+
         {activePage === 'funding' && (
           <FundingPage
             user={user}
@@ -1653,6 +1656,13 @@ export default function App() {
               className="hover:text-white transition-colors cursor-pointer"
             >
               Markets
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateTo('news')}
+              className="hover:text-white transition-colors cursor-pointer"
+            >
+              News
             </button>
             <button
               type="button"

@@ -3,6 +3,7 @@ export type PageId =
   | 'trade'
   | 'portfolio'
   | 'markets'
+  | 'news'
   | 'funding'
   | 'login'
   | 'signup'
