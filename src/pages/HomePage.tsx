@@ -270,7 +270,7 @@ export default function HomePage({
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]"
         />
 
-        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-20 lg:pb-24 grid grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] sm:grid-cols-[1.05fr_0.95fr] lg:grid-cols-[1.02fr_0.98fr] gap-3 sm:gap-8 lg:gap-16 items-center">
+        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-20 lg:pb-24 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:grid-cols-[1.05fr_0.95fr] lg:grid-cols-[1.02fr_0.98fr] gap-3 sm:gap-8 lg:gap-16 items-center">
           <div className="min-w-0">
             <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[9px] leading-tight sm:px-3 sm:py-1.5 sm:text-xs sm:gap-2 font-semibold tracking-wide text-emerald-300">
               <Sparkles className="w-3.5 h-3.5" />
@@ -332,7 +332,7 @@ export default function HomePage({
 
             <div
               ref={phoneRef}
-              className="xena-phone-float relative w-full max-w-[132px] rounded-[1.8rem] border-[5px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20 sm:max-w-[200px] sm:rounded-[2.3rem] sm:border-[7px] md:max-w-[250px] lg:max-w-[310px] lg:rounded-[2.6rem]"
+              className="xena-phone-float relative w-full max-w-[150px] rounded-[1.8rem] border-[5px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20 sm:max-w-[200px] sm:rounded-[2.3rem] sm:border-[7px] md:max-w-[250px] lg:max-w-[310px] lg:rounded-[2.6rem]"
             >
               <div className="relative aspect-[1/2] w-full overflow-hidden rounded-[1.3rem] bg-[#0A1624] sm:rounded-[2rem]">
                 <img
