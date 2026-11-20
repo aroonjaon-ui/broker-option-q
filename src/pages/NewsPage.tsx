@@ -7,13 +7,13 @@ import {
   ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
-import newsMarketsImg from '../assets/images/img_news_markets.png';
-import newsChipsImg from '../assets/images/img_news_chips.png';
-import newsYieldsImg from '../assets/images/img_news_yields.png';
-import newsOrderbookImg from '../assets/images/img_news_orderbook.png';
-import newsCryptoImg from '../assets/images/img_news_crypto.png';
-import newsEnergyImg from '../assets/images/img_news_energy.png';
-import newsDollarImg from '../assets/images/img_news_dollar.png';
+import newsMarketsImg from '../assets/images/photo_news_markets.jpg';
+import newsChipsImg from '../assets/images/photo_news_chips.jpg';
+import newsYieldsImg from '../assets/images/photo_news_yields.jpg';
+import newsOrderbookImg from '../assets/images/photo_news_orderbook.jpg';
+import newsCryptoImg from '../assets/images/photo_news_crypto.jpg';
+import newsEnergyImg from '../assets/images/photo_news_energy.jpg';
+import newsDollarImg from '../assets/images/photo_news_dollar.jpg';
 import { PageId } from '../types/broker';
 
 interface NewsPageProps {

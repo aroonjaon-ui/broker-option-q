@@ -19,9 +19,9 @@ import { useRef } from 'react';
 import MiniSparkline from '../components/MiniSparkline';
 import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
 import phoneTerminalImg from '../assets/images/phone_trading_terminal.png';
-import fundingTransferImg from '../assets/images/img_funding_transfer.png';
-import orderTicketImg from '../assets/images/img_order_ticket.png';
-import portfolioDashboardImg from '../assets/images/img_portfolio_dashboard.png';
+import fundingTransferImg from '../assets/images/photo_funding.jpg';
+import orderTicketImg from '../assets/images/photo_order.jpg';
+import portfolioDashboardImg from '../assets/images/photo_portfolio.jpg';
 import { MarketIndex, OrderSide, PageId, Stock, UserAccount } from '../types/broker';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
