@@ -656,7 +656,7 @@ export default function App() {
     const timer = window.setInterval(() => {
       setStocks((prevStocks) => {
         const updatedStocks = prevStocks.map((stock) => {
-          const pctMove = (Math.random() - 0.495) * 0.0045;
+          const pctMove = (Math.random() - 0.495) * 0.0016;
           const rawNext = stock.price * (1 + pctMove);
           const nextPrice = Math.max(1, Number(rawNext.toFixed(2)));
           const nextSparkline = [...stock.sparkline.slice(0, -1), nextPrice];
@@ -699,7 +699,7 @@ export default function App() {
 
       setIndices((prevIndices) =>
         prevIndices.map((idx) => {
-          const move = (Math.random() - 0.495) * (idx.isYield ? 0.01 : idx.value * 0.0006);
+          const move = (Math.random() - 0.495) * (idx.isYield ? 0.004 : idx.value * 0.00022);
           const nextVal = Number((idx.value + move).toFixed(2));
           const basePrev = idx.value - idx.change;
           const nextChange = Number((nextVal - basePrev).toFixed(2));
@@ -712,7 +712,7 @@ export default function App() {
           };
         })
       );
-    }, 2500);
+    }, 900);
 
     return () => window.clearInterval(timer);
   }, [isLiveQuotes]);

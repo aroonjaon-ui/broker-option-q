@@ -209,20 +209,38 @@ export default function HomePage({
     : 0;
   const previewPct = previewStock ? (previewChange / previewStock.previousClose) * 100 : 0;
 
-  const ticker = [
+  const prevQuoteValues = useRef<Record<string, number>>({});
+  const markDirection = (
+    items: { key: string; label: string; value: string; pct: number; raw: number }[]
+  ) =>
+    items.map((item) => {
+      const previous = prevQuoteValues.current[item.key];
+      const dir =
+        previous === undefined || item.raw === previous
+          ? 'flat'
+          : item.raw > previous
+            ? 'up'
+            : 'down';
+      prevQuoteValues.current[item.key] = item.raw;
+      return { ...item, dir };
+    });
+
+  const ticker = markDirection([
     ...indices.slice(0, 4).map((i) => ({
       key: i.id,
       label: i.name,
       value: i.isYield ? `${i.value.toFixed(2)}%` : i.value.toLocaleString('en-US', { maximumFractionDigits: 2 }),
       pct: i.changePercent,
+      raw: i.value,
     })),
     ...featured.map((s) => ({
       key: s.symbol,
       label: s.symbol,
       value: formatCurrency(s.price),
       pct: ((s.price - s.previousClose) / s.previousClose) * 100,
+      raw: s.price,
     })),
-  ];
+  ]);
 
   return (
     <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-8">
@@ -336,7 +354,18 @@ export default function HomePage({
             {ticker.map((item) => (
               <span key={item.key} className="shrink-0 inline-flex items-baseline gap-2 text-xs">
                 <span className="font-semibold text-slate-300">{item.label}</span>
-                <span className="font-mono tabular-nums text-slate-400">{item.value}</span>
+                <span
+                  key={`${item.key}-${item.value}`}
+                  className={`font-mono tabular-nums text-slate-400 ${
+                    item.dir === 'up'
+                      ? 'quote-flash-up'
+                      : item.dir === 'down'
+                        ? 'quote-flash-down'
+                        : ''
+                  }`}
+                >
+                  {item.value}
+                </span>
                 <span
                   className={`font-mono text-[11px] font-semibold tabular-nums ${
                     item.pct >= 0 ? 'text-emerald-400' : 'text-rose-400'

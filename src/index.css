@@ -491,3 +491,19 @@
 @media (prefers-reduced-motion: reduce) {
   .xena-phone-float { animation: none; }
 }
+
+
+/* Live quote tick feedback */
+@keyframes quoteFlashUp {
+  0% { color:#34D399; text-shadow:0 0 12px rgba(52,211,153,.65); }
+  100% { text-shadow:none; }
+}
+@keyframes quoteFlashDown {
+  0% { color:#FB7185; text-shadow:0 0 12px rgba(251,113,133,.6); }
+  100% { text-shadow:none; }
+}
+.quote-flash-up { animation: quoteFlashUp 700ms ease-out; }
+.quote-flash-down { animation: quoteFlashDown 700ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .quote-flash-up, .quote-flash-down { animation: none; }
+}

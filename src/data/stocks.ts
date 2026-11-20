@@ -6,7 +6,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'Apple Inc.',
     exchange: 'NASDAQ',
     sector: 'Technology',
-    price: 228.45,
+    price: 227.80,
     previousClose: 225.80,
     dayOpen: 226.15,
     dayHigh: 229.60,
@@ -26,7 +26,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'Microsoft Corporation',
     exchange: 'NASDAQ',
     sector: 'Technology',
-    price: 422.18,
+    price: 424.51,
     previousClose: 418.90,
     dayOpen: 419.50,
     dayHigh: 424.10,
@@ -46,7 +46,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'NVIDIA Corporation',
     exchange: 'NASDAQ',
     sector: 'Semiconductors',
-    price: 141.72,
+    price: 141.75,
     previousClose: 138.25,
     dayOpen: 139.10,
     dayHigh: 143.05,
@@ -86,7 +86,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'Amazon.com, Inc.',
     exchange: 'NASDAQ',
     sector: 'Consumer',
-    price: 206.35,
+    price: 208.31,
     previousClose: 203.40,
     dayOpen: 204.00,
     dayHigh: 207.20,
@@ -106,7 +106,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'Tesla, Inc.',
     exchange: 'NASDAQ',
     sector: 'Consumer',
-    price: 318.60,
+    price: 319.52,
     previousClose: 324.15,
     dayOpen: 323.00,
     dayHigh: 325.40,
@@ -126,7 +126,7 @@ export const INITIAL_STOCKS: Stock[] = [
     name: 'Meta Platforms, Inc.',
     exchange: 'NASDAQ',
     sector: 'Technology',
-    price: 584.20,
+    price: 578.26,
     previousClose: 579.60,
     dayOpen: 580.40,
     dayHigh: 587.10,
@@ -284,10 +284,10 @@ export const INITIAL_STOCKS: Stock[] = [
 ];
 
 export const INITIAL_INDICES: MarketIndex[] = [
-  { id: 'sp500', name: 'S&P 500', symbol: 'SPX', value: 5985.38, change: 42.15, changePercent: 0.71 },
-  { id: 'nasdaq', name: 'NASDAQ 100', symbol: 'NDX', value: 21048.92, change: 196.40, changePercent: 0.94 },
-  { id: 'dow', name: 'Dow Jones', symbol: 'DJI', value: 43910.45, change: 118.22, changePercent: 0.27 },
-  { id: 'us10y', name: 'US 10Y Yield', symbol: 'TNX', value: 4.38, change: -0.04, changePercent: -0.91, isYield: true },
+  { id: 'sp500', name: 'S&P 500', symbol: 'SPX', value: 5986.9, change: 43.42, changePercent: 0.73 },
+  { id: 'nasdaq', name: 'NASDAQ 100', symbol: 'NDX', value: 21009.75, change: 156.32, changePercent: 0.75 },
+  { id: 'dow', name: 'Dow Jones', symbol: 'DJI', value: 43900.05, change: 109.45, changePercent: 0.25 },
+  { id: 'us10y', name: 'US 10Y Yield', symbol: 'TNX', value: 4.38, change: -0.04, changePercent: -0.90, isYield: true },
 ];
 
 export function createInitialBrokerState(): BrokerState {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Globe2, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { AccountMode, PageId, UserAccount } from '../types/broker';
 import BrandLogo from './BrandLogo';
@@ -10,6 +10,11 @@ interface TopNavProps {
   onLogout: () => void;
   accountMode: AccountMode;
   onSwitchAccount: (mode: AccountMode) => void;
+}
+
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
 const NAV_ITEMS: { id: PageId; label: string }[] = [
@@ -30,6 +35,28 @@ export default function TopNav({
   onSwitchAccount,
 }: TopNavProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const onInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', onInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onInstallPrompt);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) {
+      window.alert(
+        'To install Xena Broker, open your browser menu and choose "Install app" or "Add to Home screen".'
+      );
+      return;
+    }
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   const handleNav = (page: PageId) => {
     onNavigate(page);
@@ -39,9 +66,9 @@ export default function TopNav({
   return (
     <header className="sticky top-0 z-40 bg-white">
       {/* Utility bar */}
-      <div className="hidden sm:block bg-[#06182B]">
+      <div className="block bg-[#06182B]">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-9 flex items-center justify-between text-[11px] font-medium tracking-wide text-slate-400">
-          <div className="flex items-center gap-5">
+          <div className="hidden sm:flex items-center gap-5">
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               Client funds segregated
@@ -51,9 +78,18 @@ export default function TopNav({
               US equities · Global access
             </span>
           </div>
-          <div className="flex items-center gap-5">
-            <span>Support 24/5</span>
-            <span className="text-slate-500">|</span>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleInstall}
+              title="Install Xena Broker app"
+              className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-emerald-300 hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <BrandLogo size={17} showWordmark={false} />
+              <span className="hidden sm:inline font-semibold">Install app</span>
+            </button>
+            <span className="hidden sm:inline">Support 24/5</span>
+            <span className="hidden sm:inline text-slate-500">|</span>
             <span className="text-slate-300">EN</span>
           </div>
         </div>
