@@ -477,6 +477,16 @@
   --modal-wheel-bg: #F1F5F9;
 }
 
+/* Auto-scrolling market ticker: hidden scrollbar, still swipeable */
+.xena-ticker {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+}
+.xena-ticker::-webkit-scrollbar {
+  display: none;
+}
+
 /* Animated phone preview on the home page */
 @keyframes xena-phone-float {
   0%, 100% { transform: perspective(1200px) rotateY(-16deg) rotateX(7deg) rotateZ(-5deg) translate3d(0, 0, 0); }

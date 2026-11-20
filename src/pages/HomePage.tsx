@@ -15,7 +15,7 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import MiniSparkline from '../components/MiniSparkline';
 import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
 import phoneTerminalImg from '../assets/images/phone_trading_terminal.png';
@@ -242,6 +242,49 @@ export default function HomePage({
     })),
   ]);
 
+  // The market strip drifts sideways on its own, but users can still swipe or
+  // drag it. Interaction pauses the drift briefly so it never fights the user.
+  const tickerScrollerRef = useRef<HTMLDivElement | null>(null);
+  const tickerPausedRef = useRef(false);
+  const tickerPauseUntilRef = useRef(0);
+  const tickerDragRef = useRef({ active: false, startX: 0, startScroll: 0 });
+
+  const pauseTicker = (delay = 1200) => {
+    tickerPausedRef.current = true;
+    tickerPauseUntilRef.current = performance.now() + delay;
+  };
+
+  const resumeTicker = () => {
+    tickerPausedRef.current = false;
+    tickerPauseUntilRef.current = 0;
+  };
+
+  useEffect(() => {
+    const el = tickerScrollerRef.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let frame = 0;
+    let last = performance.now();
+    let position = el.scrollLeft;
+    const drift = (now: number) => {
+      const elapsed = Math.min(50, now - last);
+      last = now;
+      // If the user swiped/dragged, start drifting from their new position.
+      if (Math.abs(el.scrollLeft - position) > 2) position = el.scrollLeft;
+      if (!tickerPausedRef.current && now >= tickerPauseUntilRef.current) {
+        const half = el.scrollWidth / 2;
+        if (half > 0) {
+          position += elapsed * 0.035;
+          if (position >= half) position -= half;
+          el.scrollLeft = position;
+        }
+      }
+      frame = requestAnimationFrame(drift);
+    };
+    frame = requestAnimationFrame(drift);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   return (
     <div className="-mx-3 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-8">
       {/* ============ HERO ============ */}
@@ -345,36 +388,82 @@ export default function HomePage({
           </div>
         </div>
 
-        {/* Ticker */}
+        {/* Ticker — auto-drifts sideways, swipe/drag to navigate manually */}
         <div className="relative border-t border-white/10 bg-[#04121F]">
-          <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-3 flex items-center gap-6 overflow-x-auto">
+          <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-3 flex items-center gap-4 sm:gap-6">
             <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
               Markets
             </span>
-            {ticker.map((item) => (
-              <span key={item.key} className="shrink-0 inline-flex items-baseline gap-2 text-xs">
-                <span className="font-semibold text-slate-300">{item.label}</span>
-                <span
-                  key={`${item.key}-${item.value}`}
-                  className={`font-mono tabular-nums text-slate-400 ${
-                    item.dir === 'up'
-                      ? 'quote-flash-up'
-                      : item.dir === 'down'
-                        ? 'quote-flash-down'
-                        : ''
-                  }`}
+            <div
+              ref={tickerScrollerRef}
+              className="xena-ticker flex min-w-0 flex-1 select-none items-center overflow-x-auto cursor-grab active:cursor-grabbing"
+              onMouseEnter={() => pauseTicker(0)}
+              onMouseLeave={resumeTicker}
+              onTouchStart={() => pauseTicker(1500)}
+              onTouchEnd={() => pauseTicker(1500)}
+              onPointerDown={(e) => {
+                if (e.pointerType !== 'mouse') return;
+                tickerDragRef.current = {
+                  active: true,
+                  startX: e.clientX,
+                  startScroll: e.currentTarget.scrollLeft,
+                };
+                pauseTicker(1500);
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                const drag = tickerDragRef.current;
+                if (!drag.active) return;
+                e.currentTarget.scrollLeft = drag.startScroll - (e.clientX - drag.startX);
+              }}
+              onPointerUp={(e) => {
+                tickerDragRef.current.active = false;
+                pauseTicker(1200);
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                }
+              }}
+              onPointerCancel={() => {
+                tickerDragRef.current.active = false;
+                pauseTicker(1200);
+              }}
+            >
+              {[0, 1].map((copy) => (
+                <div
+                  key={copy}
+                  aria-hidden={copy === 1 ? true : undefined}
+                  className="flex shrink-0 items-center gap-6 pr-6"
                 >
-                  {item.value}
-                </span>
-                <span
-                  className={`font-mono text-[11px] font-semibold tabular-nums ${
-                    item.pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {formatPercent(item.pct)}
-                </span>
-              </span>
-            ))}
+                  {ticker.map((item) => (
+                    <span
+                      key={item.key}
+                      className="shrink-0 inline-flex items-baseline gap-2 text-xs"
+                    >
+                      <span className="font-semibold text-slate-300">{item.label}</span>
+                      <span
+                        key={`${item.key}-${item.value}`}
+                        className={`font-mono tabular-nums text-slate-400 ${
+                          item.dir === 'up'
+                            ? 'quote-flash-up'
+                            : item.dir === 'down'
+                              ? 'quote-flash-down'
+                              : ''
+                        }`}
+                      >
+                        {item.value}
+                      </span>
+                      <span
+                        className={`font-mono text-[11px] font-semibold tabular-nums ${
+                          item.pct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(item.pct)}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
