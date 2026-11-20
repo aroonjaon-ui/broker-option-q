@@ -84,6 +84,45 @@ export const signOutCloud = async () => {
   await supabase.auth.signOut();
 };
 
+/**
+ * Exchange a Clerk session token for a Supabase session. Requires Clerk to be
+ * configured as a third-party auth provider in the Supabase dashboard.
+ */
+export const signInWithClerkToken = async (token: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'clerk',
+    token,
+  });
+  if (error) return { ok: false as const, message: error.message };
+  return {
+    ok: true as const,
+    userId: data.user?.id ?? null,
+    email: data.user?.email ?? null,
+  };
+};
+
+/** Find an existing profile by email so social users keep their balance. */
+export const findCloudProfileByEmail = async (email: string) => {
+  if (!isSupabaseConfigured()) return null;
+  const { data, error } = await admin()
+    .from('profiles')
+    .select('user_id, email, first_name, last_name, has_completed_profile')
+    .eq('email', email.trim().toLowerCase())
+    .maybeSingle();
+  if (error) {
+    console.warn('[cloud] profile lookup by email:', error.message);
+    return null;
+  }
+  return data as {
+    user_id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    has_completed_profile: boolean;
+  } | null;
+};
+
 export const updateCloudPassword = async (newPassword: string) => {
   if (!isSupabaseConfigured()) return notConfigured;
   if (newPassword.length < 6) {

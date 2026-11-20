@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HandleSSOCallback, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { ShieldAlert, Sparkles } from 'lucide-react';
 import TopNav from './components/TopNav';
 import BrandLogo from './components/BrandLogo';
@@ -6,7 +7,7 @@ import SupportChat from './components/SupportChat';
 import WithdrawalToastFeed from './components/WithdrawalToastFeed';
 import PlatformModals, { AppModalKind } from './components/PlatformModals';
 import HomePage from './pages/HomePage';
-import AuthPage from './pages/AuthPage';
+import AuthPage, { SocialProvider } from './pages/AuthPage';
 import CompleteProfile from './pages/CompleteProfile';
 import TradePage from './pages/TradePage';
 import PortfolioPage from './pages/PortfolioPage';
@@ -43,6 +44,7 @@ import {
   DEFAULT_CUSTODY_SETTINGS,
   ensureCloudUser,
   fetchMyLedger,
+  findCloudProfileByEmail,
   getCustodySettings,
   getSessionUser,
   pullSnapshot,
@@ -51,6 +53,7 @@ import {
   pushPositions,
   pushProfile,
   signInCloud,
+  signInWithClerkToken,
   signOutCloud,
   signUpCloud,
   submitDepositRequest,
@@ -66,6 +69,8 @@ const ACCOUNTS_STORAGE_KEY = 'xena_broker_accounts_v1';
 const KYC_STORAGE_KEY = 'xena_broker_kyc_v1';
 const DAILY_SPIN_SHOWN_KEY = 'xena_broker_daily_spin_last_shown_v1';
 const PLATFORM_INFO_SEEN_KEY = 'xena_broker_platform_seen_v1';
+const SOCIAL_MODE_KEY = 'xena_broker_social_mode_v1';
+const SSO_CALLBACK_KEY = 'clerk_sso_callback';
 const THEME_KEY = 'xena_theme_v1';
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
@@ -357,6 +362,13 @@ export default function App() {
     }
   });
   const [modalQueue, setModalQueue] = useState<AppModalKind[]>([]);
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const [socialBusy, setSocialBusy] = useState<SocialProvider | null>(null);
+  const { signIn: clerkSignIn } = useSignIn();
+  const { getToken, isLoaded: clerkAuthLoaded, isSignedIn: clerkIsSignedIn } = useAuth();
+  const { user: clerkUser } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
+  const clerkHydrationRef = useRef<string | null>(null);
   const cloudUserIdRef = useRef<string | null>(null);
   const lastLocalMoneyChangeRef = useRef<number>(0);
   const userRef = useRef<UserAccount | null>(user);
@@ -476,6 +488,12 @@ export default function App() {
   useEffect(() => {
     if (window.location.hash.toLowerCase() === '#admin') {
       setActivePage('admin');
+      return;
+    }
+    const authStep = new URLSearchParams(window.location.search).get('auth');
+    if (authStep === 'login' || authStep === 'signup') {
+      setActivePage(authStep);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
@@ -781,6 +799,137 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  /** Hydrate the local mirror once when a Clerk social session returns. */
+  useEffect(() => {
+    if (!clerkAuthLoaded || !clerkIsSignedIn || !clerkUser) return;
+    if (clerkHydrationRef.current === clerkUser.id) return;
+    clerkHydrationRef.current = clerkUser.id;
+
+    void (async () => {
+      try {
+        const email = (clerkUser.primaryEmailAddress?.emailAddress ?? '').trim().toLowerCase();
+        const name =
+          [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') ||
+          email.split('@')[0] ||
+          'Xena Member';
+        const existing = credentials.find((c) => c.user.email.toLowerCase() === email);
+
+        let uid: string | null = null;
+        let snap: Awaited<ReturnType<typeof pullSnapshot>> = null;
+        let cloudProfile: Awaited<ReturnType<typeof findCloudProfileByEmail>> = null;
+
+        const token = await getToken();
+        if (token) {
+          const auth = await signInWithClerkToken(token);
+          if (auth.ok && auth.userId) {
+            uid = auth.userId;
+            cloudUserIdRef.current = uid;
+            cloudProfile = await findCloudProfileByEmail(auth.email ?? email);
+            await ensureCloudUser({ userId: uid, email, name });
+            snap = await pullSnapshot(uid);
+          } else {
+            console.warn(
+              '[clerk] Supabase session exchange failed:',
+              ('message' in auth ? auth.message : undefined) ?? 'no user id'
+            );
+          }
+        }
+        cloudUserIdRef.current = uid;
+
+        const merged: UserAccount = {
+          id: uid ?? `clerk-${clerkUser.id}`,
+          name: existing?.user.name || name,
+          email,
+          accountNumber:
+            existing?.user.accountNumber ??
+            `XN-${(uid ?? clerkUser.id).slice(0, 6).toUpperCase()}`,
+          createdAt: existing?.user.createdAt ?? new Date().toISOString(),
+          hasCompletedProfile:
+            snap?.profile?.has_completed_profile ??
+            cloudProfile?.has_completed_profile ??
+            existing?.user.hasCompletedProfile ??
+            false,
+        };
+
+        setCredentials((prev) => {
+          const idx = prev.findIndex((c) => c.user.email.toLowerCase() === email);
+          if (idx >= 0) return prev.map((c, i) => (i === idx ? { ...c, user: merged } : c));
+          return [...prev, { user: merged, password: '' }];
+        });
+        setUser(merged);
+        userRef.current = merged;
+        setAccountMode('real');
+        setBroker({
+          ...createEmptyBrokerState(),
+          cashBalance: snap?.cashBalance ?? 0,
+          positions: snap?.positions ?? {},
+        });
+        if (snap) applyCloudKyc(snap);
+        if (uid) void hydrateLedger(uid);
+
+        const isBrandNew = !existing && !cloudProfile && !merged.hasCompletedProfile;
+        if (isBrandNew && uid) {
+          const welcomeKey = `xena_clerk_welcome_${uid}`;
+          try {
+            if (sessionStorage.getItem(welcomeKey) !== '1') {
+              sessionStorage.setItem(welcomeKey, '1');
+              localStorage.removeItem(PLATFORM_INFO_SEEN_KEY);
+              enqueueModals(['signup_bonus']);
+            }
+          } catch {
+            /* ignore storage errors */
+          }
+        }
+
+        navigateTo(merged.hasCompletedProfile ? 'funding' : 'complete-profile');
+      } catch (err) {
+        console.warn('[clerk] social sign-in hydration failed:', err);
+      }
+    })();
+  }, [
+    clerkAuthLoaded,
+    clerkIsSignedIn,
+    clerkUser,
+    getToken,
+    credentials,
+    applyCloudKyc,
+    hydrateLedger,
+    enqueueModals,
+    navigateTo,
+  ]);
+
+  const handleSocialAuth = useCallback(
+    async (provider: SocialProvider, mode: 'login' | 'signup') => {
+      setSocialError(null);
+      setSocialBusy(provider);
+      try {
+        try {
+          localStorage.setItem(SOCIAL_MODE_KEY, mode);
+        } catch {
+          /* ignore storage errors */
+        }
+        const origin = window.location.origin;
+        const { error } = await clerkSignIn.sso({
+          strategy: `oauth_${provider}` as Parameters<typeof clerkSignIn.sso>[0]['strategy'],
+          redirectUrl: origin,
+          redirectCallbackUrl: `${origin}/?${SSO_CALLBACK_KEY}=1`,
+        });
+        if (error) {
+          setSocialError(
+            (error as { longMessage?: string }).longMessage ||
+              error.message ||
+              'Social sign-in is unavailable. Enable the provider in your Clerk dashboard.'
+          );
+        }
+      } catch (err) {
+        setSocialError(err instanceof Error ? err.message : 'Unable to start social sign-in.');
+      } finally {
+        setSocialBusy(null);
+      }
+    },
+    [clerkSignIn]
+  );
+
   const handleSignup = useCallback(
     async (email: string, password: string): Promise<{ ok: boolean; message?: string }> => {
       const exists = credentials.some((c) => c.user.email.toLowerCase() === email);
@@ -979,7 +1128,9 @@ export default function App() {
 
       return {
         ok: false,
-        message: cloud.message ?? 'Invalid email or password. Try the demo account below or sign up.',
+        message:
+          ('message' in cloud ? cloud.message : undefined) ??
+          'Invalid email or password. Try the demo account below or sign up.',
       };
     },
     [credentials, navigateTo]
@@ -1006,6 +1157,8 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     void signOutCloud();
+    void clerkSignOut();
+    clerkHydrationRef.current = null;
     cloudUserIdRef.current = null;
     userRef.current = null;
     setUser(null);
@@ -1022,7 +1175,7 @@ export default function App() {
       // Ignore storage errors
     }
     navigateTo('home');
-  }, [navigateTo]);
+  }, [navigateTo, clerkSignOut]);
 
   /** Switch between the funded real account and the $10,000 practice account. */
   const handleSwitchAccount = useCallback(
@@ -1455,6 +1608,29 @@ export default function App() {
     [accountMode]
   );
 
+  if (
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has(SSO_CALLBACK_KEY)
+  ) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0b1220] text-slate-200">
+        <BrandLogo size={44} />
+        <p className="text-sm text-slate-400">Finishing secure sign-in…</p>
+        <HandleSSOCallback
+          navigateToApp={() => {
+            window.location.replace(window.location.origin);
+          }}
+          navigateToSignIn={() => {
+            window.location.replace(`${window.location.origin}/?auth=login`);
+          }}
+          navigateToSignUp={() => {
+            window.location.replace(`${window.location.origin}/?auth=signup`);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] overflow-x-hidden">
       <TopNav
@@ -1513,6 +1689,9 @@ export default function App() {
             onLogin={handleLogin}
             onSignup={handleSignup}
             onDemoLogin={handleDemoLogin}
+            onSocialAuth={handleSocialAuth}
+            socialError={socialError}
+            socialBusy={socialBusy}
           />
         )}
 

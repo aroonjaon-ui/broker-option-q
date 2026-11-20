@@ -1,7 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ClerkProvider } from '@clerk/react';
 import App from './App';
 import './index.css';
+
+// Clerk is public-by-design (same pattern as the Supabase anon key).
+const CLERK_PUBLISHABLE_KEY =
+  'pk_test_cmF0aW9uYWwtc2hlZXBkb2ctNzE0Ni5jbGVyay5hY2NvdW50cy5kZXYk';
 
 interface BoundaryState {
   error: Error | null;
@@ -59,8 +64,10 @@ const container = document.getElementById('root');
 
 if (container) {
   createRoot(container).render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </ClerkProvider>
   );
 }
