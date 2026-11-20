@@ -270,31 +270,31 @@ export default function HomePage({
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]"
         />
 
-        <div className="relative max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 pt-14 pb-16 lg:pt-20 lg:pb-24 grid lg:grid-cols-[1.02fr_0.98fr] gap-12 lg:gap-16 items-center">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] sm:text-xs font-semibold tracking-wide text-emerald-300">
+        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-20 lg:pb-24 grid grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] sm:grid-cols-[1.05fr_0.95fr] lg:grid-cols-[1.02fr_0.98fr] gap-3 sm:gap-8 lg:gap-16 items-center">
+          <div className="min-w-0">
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[9px] leading-tight sm:px-3 sm:py-1.5 sm:text-xs sm:gap-2 font-semibold tracking-wide text-emerald-300">
               <Sparkles className="w-3.5 h-3.5" />
               Commission-free US equities · Instant demo access
             </span>
 
-            <h1 className="mt-5 font-display font-extrabold tracking-tight text-white text-[2.4rem] leading-[1.05] sm:text-5xl lg:text-[3.6rem]">
+            <h1 className="mt-4 font-display font-extrabold tracking-tight text-white text-[1.6rem] leading-[1.08] sm:mt-5 sm:text-4xl md:text-[2.8rem] lg:text-[3.6rem] lg:leading-[1.05]">
               Trade global markets{' '}
               <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-400 bg-clip-text text-transparent">
                 with confidence
               </span>
             </h1>
 
-            <p className="mt-5 max-w-xl text-[15px] sm:text-lg leading-relaxed text-slate-300">
+            <p className="mt-3 max-w-xl text-[11px] leading-[1.5] sm:mt-5 sm:text-sm md:text-base lg:text-lg lg:leading-relaxed text-slate-300">
               One workspace for funding, execution and portfolio management. Live quotes,
               interactive charts and zero-commission stock trading — with a funding desk that
               reviews every transfer.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-col gap-2 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <button
                 type="button"
                 onClick={() => onNavigate(user ? 'trade' : 'signup')}
-                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 px-6 py-3.5 text-sm sm:text-[15px] font-bold text-[#04231A] shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:shadow-emerald-400/30 cursor-pointer"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-400 px-3 py-2.5 text-[11px] font-bold text-[#04231A] shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:shadow-emerald-400/30 cursor-pointer sm:w-auto sm:rounded-xl sm:px-6 sm:py-3.5 sm:text-sm lg:text-[15px]"
               >
                 {user ? 'Go to trade desk' : 'Open a free account'}
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -302,14 +302,14 @@ export default function HomePage({
               <button
                 type="button"
                 onClick={() => onNavigate('trade')}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-6 py-3.5 text-sm sm:text-[15px] font-semibold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/10 cursor-pointer"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3 py-2.5 text-[11px] font-semibold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/10 cursor-pointer sm:w-auto sm:rounded-xl sm:px-6 sm:py-3.5 sm:text-sm lg:text-[15px]"
               >
                 <LineChart className="w-4 h-4 text-emerald-300" />
                 Try the live demo
               </button>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-[13px] text-slate-300">
+            <div className="mt-5 grid grid-cols-1 gap-1.5 text-[10px] sm:mt-8 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-3 sm:text-[13px] text-slate-300">
               {['$0 commission on stocks', 'Same-day funding review', 'Demo account included'].map(
                 (item) => (
                   <span key={item} className="inline-flex items-center gap-1.5">
@@ -326,15 +326,15 @@ export default function HomePage({
             ref={phoneStageRef}
             onMouseMove={(e) => applyPhoneTilt(e.clientX, e.clientY)}
             onMouseLeave={resetPhoneTilt}
-            className="relative flex items-center justify-center py-8"
+            className="relative flex min-w-0 items-center justify-center py-2 sm:py-8"
           >
-            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl animate-ambient-breathe" />
+            <div className="absolute -inset-3 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl animate-ambient-breathe sm:-inset-6" />
 
             <div
               ref={phoneRef}
-              className="xena-phone-float relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20"
+              className="xena-phone-float relative w-full max-w-[132px] rounded-[1.8rem] border-[5px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20 sm:max-w-[200px] sm:rounded-[2.3rem] sm:border-[7px] md:max-w-[250px] lg:max-w-[310px] lg:rounded-[2.6rem]"
             >
-              <div className="relative aspect-[1/2] w-full overflow-hidden rounded-[2rem] bg-[#0A1624]">
+              <div className="relative aspect-[1/2] w-full overflow-hidden rounded-[1.3rem] bg-[#0A1624] sm:rounded-[2rem]">
                 <img
                   src={phoneTerminalImg}
                   alt="Xena Broker trading terminal on a phone"
