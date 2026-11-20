@@ -53,6 +53,7 @@ import {
   pushPositions,
   pushProfile,
   signInCloud,
+  signInWithClerkJwtTemplate,
   signInWithClerkToken,
   signOutCloud,
   signUpCloud,
@@ -818,23 +819,41 @@ export default function App() {
         let snap: Awaited<ReturnType<typeof pullSnapshot>> = null;
         let cloudProfile: Awaited<ReturnType<typeof findCloudProfileByEmail>> = null;
 
-        const token = await getToken();
-        if (token) {
-          const auth = await signInWithClerkToken(token);
-          if (auth.ok && auth.userId) {
-            uid = auth.userId;
-            cloudUserIdRef.current = uid;
-            cloudProfile = await findCloudProfileByEmail(auth.email ?? email);
-            await ensureCloudUser({ userId: uid, email, name });
-            snap = await pullSnapshot(uid);
+        const sessionToken = await getToken();
+        let cloudAuth:
+          | { ok: boolean; userId?: string | null; email?: string | null; message?: string }
+          | null = null;
+
+        if (sessionToken) {
+          const thirdParty = await signInWithClerkToken(sessionToken);
+          if (thirdParty.ok) {
+            cloudAuth = thirdParty;
           } else {
-            console.warn(
-              '[clerk] Supabase session exchange failed:',
-              ('message' in auth ? auth.message : undefined) ?? 'no user id'
-            );
+            // Fallback for the legacy Clerk ↔ Supabase JWT-template integration.
+            const templateToken = await getToken({ template: 'supabase' });
+            cloudAuth = templateToken
+              ? await signInWithClerkJwtTemplate(templateToken)
+              : thirdParty;
           }
         }
+
+        if (!cloudAuth?.ok || !cloudAuth.userId) {
+          const detail = cloudAuth?.message ? ` (${cloudAuth.message})` : '';
+          console.warn('[clerk] Supabase session exchange failed:', cloudAuth?.message);
+          setSocialError(
+            'Social sign-in worked, but Supabase sync is not configured yet.' +
+              detail +
+              ' Enable Clerk in Supabase Authentication → Third-Party Auth, or add a "supabase" JWT template in Clerk, then try again.'
+          );
+          navigateTo('login');
+          return;
+        }
+
+        uid = cloudAuth.userId;
         cloudUserIdRef.current = uid;
+        cloudProfile = await findCloudProfileByEmail(cloudAuth.email ?? email);
+        await ensureCloudUser({ userId: uid, email, name });
+        snap = await pullSnapshot(uid);
 
         const merged: UserAccount = {
           id: uid ?? `clerk-${clerkUser.id}`,

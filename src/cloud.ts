@@ -102,6 +102,24 @@ export const signInWithClerkToken = async (token: string) => {
   };
 };
 
+/**
+ * Legacy Clerk ↔ Supabase integration fallback: exchange a Clerk JWT template
+ * token (usually named "supabase") for a Supabase session.
+ */
+export const signInWithClerkJwtTemplate = async (token: string) => {
+  if (!isSupabaseConfigured()) return notConfigured;
+  const { data, error } = await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: token,
+  });
+  if (error) return { ok: false as const, message: error.message };
+  return {
+    ok: true as const,
+    userId: data.user?.id ?? null,
+    email: data.user?.email ?? null,
+  };
+};
+
 /** Find an existing profile by email so social users keep their balance. */
 export const findCloudProfileByEmail = async (email: string) => {
   if (!isSupabaseConfigured()) return null;
