@@ -4,7 +4,6 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
-  BadgeCheck,
   Building2,
   Check,
   CheckCircle2,
@@ -12,11 +11,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
-  Landmark,
-  Lock,
   Plus,
-  ShieldCheck,
-  Wallet,
   X,
 } from 'lucide-react';
 import { AccountMode, BankAccount, LedgerEntry, UserAccount } from '../types/broker';
@@ -83,25 +78,6 @@ export default function FundingPage({
       setCopiedField((prev) => (prev === fieldKey ? null : prev));
     }, 1800);
   };
-
-  const fundingSummary = useMemo(() => {
-    let deposits = 0;
-    let withdrawals = 0;
-    let pendingAmount = 0;
-    let pendingCount = 0;
-    ledger.forEach((entry) => {
-      const amount = Math.abs(entry.amount);
-      if (entry.status === 'pending') {
-        pendingAmount += amount;
-        pendingCount += 1;
-        return;
-      }
-      if (entry.status === 'rejected') return;
-      if (entry.type === 'deposit') deposits += amount;
-      if (entry.type === 'withdrawal') withdrawals += amount;
-    });
-    return { deposits, withdrawals, pendingAmount, pendingCount };
-  }, [ledger]);
 
   const filteredLedger = useMemo(() => {
     return ledger.filter((entry) => {
@@ -335,56 +311,6 @@ export default function FundingPage({
         </div>
       </section>
 
-      {/* Funding Overview */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Funding overview">
-        {[
-          {
-            label: 'Cash Balance',
-            value: formatCurrency(cashBalance),
-            hint: accountMode === 'demo' ? 'Virtual funds' : 'Settled buying power',
-            icon: Wallet,
-            accent: 'text-[var(--primary)]',
-          },
-          {
-            label: 'Available to Withdraw',
-            value: formatCurrency(availableCash),
-            hint: reservedCash > 0 ? `${formatCurrency(reservedCash)} reserved` : 'No reserved cash',
-            icon: ArrowDownLeft,
-            accent: 'text-[var(--secondary)]',
-          },
-          {
-            label: 'Approved Deposits',
-            value: formatCurrency(fundingSummary.deposits),
-            hint: 'Lifetime transfers in',
-            icon: Landmark,
-            accent: 'text-emerald-500',
-          },
-          {
-            label: 'Pending Review',
-            value: fundingSummary.pendingCount ? formatCurrency(fundingSummary.pendingAmount) : '—',
-            hint: `${fundingSummary.pendingCount} open request${fundingSummary.pendingCount === 1 ? '' : 's'}`,
-            icon: Clock,
-            accent: 'text-[var(--accent)]',
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 shadow-sm"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                {stat.label}
-              </span>
-              <stat.icon className={`h-4 w-4 shrink-0 ${stat.accent}`} />
-            </div>
-            <div className="mt-1.5 font-mono tabular-nums text-lg font-bold text-[var(--foreground)]">
-              {stat.value}
-            </div>
-            <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{stat.hint}</div>
-          </div>
-        ))}
-      </section>
-
       {/* Main 2-Column Funding Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left: Funding Actions */}
@@ -444,157 +370,6 @@ export default function FundingPage({
               <span className="font-semibold text-[var(--foreground)]">Instant Buying Power</span>
             </div>
           </div>
-
-          {/* Deposit reference */}
-          <div className="mt-4 pt-4 border-t border-[var(--border)]">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Deposit reference
-                </div>
-                <div className="mt-0.5 font-mono text-sm font-bold text-[var(--foreground)]">
-                  {depositRefCode}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyValue('deposit-ref', depositRefCode)}
-                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--input)] px-2 py-1.5 text-[11px] font-semibold text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
-              >
-                {copiedField === 'deposit-ref' ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-                {copiedField === 'deposit-ref' ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted-foreground)]">
-              Include this reference with every bank transfer so your deposit is matched to your account.
-            </p>
-          </div>
-
-          {/* Transfer methods */}
-          <div className="mt-4 pt-4 border-t border-[var(--border)]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Transfer methods
-            </div>
-            <div className="mt-2.5 space-y-2">
-              {[
-                { name: 'ACH Transfer', detail: 'No fee · 1–3 business days' },
-                { name: 'Wire Transfer', detail: 'No fee · Same business day' },
-              ].map((method) => (
-                <div key={method.name} className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--subtle)] text-[var(--primary)]">
-                    <Landmark className="h-3.5 w-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-[var(--foreground)]">{method.name}</div>
-                    <div className="text-[11px] text-[var(--muted-foreground)]">{method.detail}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Linked bank accounts */}
-          <div className="mt-4 pt-4 border-t border-[var(--border)]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
-                Linked bank accounts
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddBank((v) => !v)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add bank
-              </button>
-            </div>
-            <div className="mt-2.5 space-y-1.5">
-              {bankAccounts.length === 0 && (
-                <p className="text-[11px] text-[var(--muted-foreground)]">No bank accounts linked yet.</p>
-              )}
-              {bankAccounts.map((acc) => {
-                const isActive = selectedBankId
-                  ? selectedBankId === acc.id
-                  : acc.id === bankAccounts[0]?.id;
-                return (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => setSelectedBankId(acc.id)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer ${
-                      isActive
-                        ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                        : 'border-[var(--border)] hover:border-[var(--primary)]'
-                    }`}
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Building2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
-                      <span className="truncate text-xs font-semibold text-[var(--foreground)]">
-                        {acc.institution}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-[var(--muted-foreground)]">
-                      ••••{acc.last4}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {showAddBank && (
-              <form
-                onSubmit={handleCreateBank}
-                className="mt-3 space-y-2 rounded-xl border border-[var(--border)] bg-[var(--input)] p-2.5"
-              >
-                <input
-                  type="text"
-                  required
-                  value={newInstitution}
-                  onChange={(e) => setNewInstitution(e.target.value)}
-                  placeholder="Institution (e.g. Citibank)"
-                  className="w-full px-2.5 py-2 text-xs bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)]"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    placeholder="Account type"
-                    className="w-full px-2.5 py-2 text-xs bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)]"
-                  />
-                  <input
-                    type="text"
-                    required
-                    maxLength={4}
-                    pattern="\d{4}"
-                    value={newLast4}
-                    onChange={(e) => setNewLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="Last 4 digits"
-                    className="w-full px-2.5 py-2 text-xs font-mono bg-[var(--card)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)]"
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBank(false)}
-                    className="px-2.5 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 text-xs font-semibold text-[var(--primary-foreground)] bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-lg cursor-pointer"
-                  >
-                    Link account
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
         </div>
 
         {/* Right: Transaction History + Promotional Cards */}
@@ -647,21 +422,7 @@ export default function FundingPage({
                         key={entry.id}
                         className="px-5 py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 hover:bg-[var(--subtle)] transition-colors text-sm"
                       >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                              isCredit
-                                ? 'bg-emerald-500/10 text-emerald-500'
-                                : 'bg-[var(--subtle)] text-[var(--muted-foreground)]'
-                            }`}
-                          >
-                            {isCredit ? (
-                              <ArrowDownLeft className="h-4 w-4" />
-                            ) : (
-                              <ArrowUpRight className="h-4 w-4" />
-                            )}
-                          </span>
-                          <div className="min-w-0">
+                        <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-semibold text-[var(--foreground)] text-sm truncate">
                               {entry.description}
@@ -689,23 +450,9 @@ export default function FundingPage({
                               </span>
                             )}
                           </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--muted-foreground)]">
-                            <span>{formatTimestamp(entry.timestamp)}</span>
-                            <span aria-hidden="true">·</span>
-                            <span className="font-mono">{entry.reference}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyValue(`ledger-${entry.id}`, entry.reference)}
-                              aria-label="Copy transaction reference"
-                              className="inline-flex items-center rounded p-0.5 hover:bg-[var(--subtle)] hover:text-[var(--primary)] cursor-pointer"
-                            >
-                              {copiedField === `ledger-${entry.id}` ? (
-                                <Check className="h-3 w-3" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
-                          </div>
+                          <div className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                            {formatTimestamp(entry.timestamp)} <span aria-hidden="true">·</span>{' '}
+                            {entry.reference}
                           </div>
                         </div>
 
@@ -814,22 +561,19 @@ export default function FundingPage({
               className="bg-gradient-to-b from-purple-500/5 via-pink-500/10 to-transparent border border-purple-500/20 rounded-2xl shadow-[var(--shadow)] p-5 sm:p-6 flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-center gap-2">
-                  <BadgeCheck className="h-5 w-5 text-purple-500" />
-                  <h3 className="font-display text-base sm:text-lg font-bold text-purple-500">
-                    Identity Verification
-                  </h3>
-                </div>
+                <h3 className="font-display text-base sm:text-lg font-bold text-purple-500">
+                  Admin-Verified Accounts
+                </h3>
                 <p className="mt-1.5 text-xs sm:text-sm text-[var(--muted-foreground)] leading-relaxed">
-                  Verify your identity with a photo ID to unlock faster transfer reviews and full account access.
+                  15% of users have verified accounts for faster deposit processing and priority support.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={onGoToPortfolio}
+                onClick={() => console.log('View admin panel')}
                 className="mt-4 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-purple-500 bg-white/10 rounded-xl hover:bg-white/15 transition-all cursor-pointer"
               >
-                <span>Complete Verification</span>
+                <span>View Admin Panel</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -838,20 +582,21 @@ export default function FundingPage({
               className="bg-gradient-to-b from-blue-500/5 via-cyan-500/10 to-transparent border border-blue-500/20 rounded-2xl shadow-[var(--shadow)] p-5 sm:p-6 flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-blue-500" />
-                  <h3 className="font-display text-base sm:text-lg font-bold text-blue-500">
-                    Secure, Segregated Custody
-                  </h3>
-                </div>
+                <h3 className="font-display text-base sm:text-lg font-bold text-blue-500">
+                  24/7 Platform Support
+                </h3>
                 <p className="mt-1.5 text-xs sm:text-sm text-[var(--muted-foreground)] leading-relaxed">
-                  Client cash is held with our clearing partner and every transfer is reviewed before it settles.
+                  Instant support for urgent issues — help is available around the clock for all account holders.
                 </p>
               </div>
-              <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-500">
-                <Lock className="h-3.5 w-3.5" />
-                <span>Bank-level encryption enabled</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => console.log('Contact support')}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-500 bg-white/10 rounded-xl hover:bg-white/15 transition-all cursor-pointer"
+              >
+                <span>Contact Support</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
