@@ -7,9 +7,13 @@ import {
   ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
-import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
-import portfolioStudioImg from '../assets/images/home_portfolio_studio_1794692664964.jpg';
-import fundingVaultImg from '../assets/images/home_funding_vault_1794692664965.jpg';
+import newsMarketsImg from '../assets/images/img_news_markets.png';
+import newsChipsImg from '../assets/images/img_news_chips.png';
+import newsYieldsImg from '../assets/images/img_news_yields.png';
+import newsOrderbookImg from '../assets/images/img_news_orderbook.png';
+import newsCryptoImg from '../assets/images/img_news_crypto.png';
+import newsEnergyImg from '../assets/images/img_news_energy.png';
+import newsDollarImg from '../assets/images/img_news_dollar.png';
 import { PageId } from '../types/broker';
 
 interface NewsPageProps {
@@ -40,7 +44,7 @@ const NEWS: NewsItem[] = [
     source: 'Xena Market Desk',
     time: '2 hours ago',
     tickers: ['SPY', 'QQQ', 'NVDA'],
-    image: tradingDeskImg,
+    image: newsMarketsImg,
     featured: true,
   },
   {
@@ -52,7 +56,7 @@ const NEWS: NewsItem[] = [
     source: 'Market Wire',
     time: '4 hours ago',
     tickers: ['NVDA', 'AMD', 'MSFT'],
-    image: portfolioStudioImg,
+    image: newsChipsImg,
   },
   {
     id: 3,
@@ -63,7 +67,7 @@ const NEWS: NewsItem[] = [
     source: 'Global Brief',
     time: '6 hours ago',
     tickers: ['TLT', 'IEF'],
-    image: fundingVaultImg,
+    image: newsYieldsImg,
   },
   {
     id: 4,
@@ -74,7 +78,7 @@ const NEWS: NewsItem[] = [
     source: 'Equity Notes',
     time: '8 hours ago',
     tickers: ['AAPL'],
-    image: portfolioStudioImg,
+    image: newsOrderbookImg,
   },
   {
     id: 5,
@@ -85,7 +89,7 @@ const NEWS: NewsItem[] = [
     source: 'Digital Assets Daily',
     time: '11 hours ago',
     tickers: ['BTC', 'ETH'],
-    image: tradingDeskImg,
+    image: newsCryptoImg,
   },
   {
     id: 6,
@@ -96,7 +100,7 @@ const NEWS: NewsItem[] = [
     source: 'Market Wire',
     time: '1 day ago',
     tickers: ['XLE', 'CVX'],
-    image: fundingVaultImg,
+    image: newsEnergyImg,
   },
   {
     id: 7,
@@ -107,7 +111,7 @@ const NEWS: NewsItem[] = [
     source: 'Xena Market Desk',
     time: '1 day ago',
     tickers: ['MSFT', 'AMZN', 'META'],
-    image: portfolioStudioImg,
+    image: newsDollarImg,
   },
 ];
 

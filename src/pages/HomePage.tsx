@@ -15,11 +15,13 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react';
+import { useRef } from 'react';
 import MiniSparkline from '../components/MiniSparkline';
-import fundingVaultImg from '../assets/images/home_funding_vault_1794692664965.jpg';
 import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
-import portfolioStudioImg from '../assets/images/home_portfolio_studio_1794692664964.jpg';
 import phoneTerminalImg from '../assets/images/phone_trading_terminal.png';
+import fundingTransferImg from '../assets/images/img_funding_transfer.png';
+import orderTicketImg from '../assets/images/img_order_ticket.png';
+import portfolioDashboardImg from '../assets/images/img_portfolio_dashboard.png';
 import { MarketIndex, OrderSide, PageId, Stock, UserAccount } from '../types/broker';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
@@ -127,7 +129,7 @@ const AWARDS = [
 
 const STEPS = [  {
     n: '01',
-    img: fundingVaultImg,
+    img: fundingTransferImg,
     title: 'Open an account & fund it',
     body: 'Register in seconds, complete your profile, then link a bank account and submit a deposit for review.',
     cta: 'Create account',
@@ -135,7 +137,7 @@ const STEPS = [  {
   },
   {
     n: '02',
-    img: tradingDeskImg,
+    img: orderTicketImg,
     title: 'Place your first trade',
     body: 'Search any US equity, inspect the interactive chart, and send a market or limit order from the trade desk.',
     cta: 'Open trade desk',
@@ -143,7 +145,7 @@ const STEPS = [  {
   },
   {
     n: '03',
-    img: portfolioStudioImg,
+    img: portfolioDashboardImg,
     title: 'Track, manage & withdraw',
     body: 'Monitor holdings and working orders, export statements, and withdraw settled cash back to your bank.',
     cta: 'View portfolio',
@@ -158,6 +160,44 @@ export default function HomePage({
   onNavigate,
   onTradeSymbol,
 }: HomePageProps) {
+  const phoneStageRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLDivElement>(null);
+  const phoneResetTimer = useRef<number | null>(null);
+
+  const applyPhoneTilt = (clientX: number, clientY: number) => {
+    const stage = phoneStageRef.current;
+    const phone = phoneRef.current;
+    if (!stage || !phone) return;
+    const rect = stage.getBoundingClientRect();
+    const px = (clientX - rect.left) / rect.width - 0.5;
+    const py = (clientY - rect.top) / rect.height - 0.5;
+    if (phoneResetTimer.current) {
+      window.clearTimeout(phoneResetTimer.current);
+      phoneResetTimer.current = null;
+    }
+    phone.classList.remove('xena-phone-float');
+    phone.style.transition = 'transform 120ms ease-out';
+    phone.style.transform =
+      `perspective(1200px) rotateY(${(-16 + px * 24).toFixed(2)}deg) ` +
+      `rotateX(${(7 - py * 18).toFixed(2)}deg) ` +
+      `rotateZ(${(-5 + px * 5).toFixed(2)}deg) ` +
+      `translate3d(${(px * 10).toFixed(1)}px, ${(py * 8).toFixed(1)}px, 0)`;
+  };
+
+  const resetPhoneTilt = () => {
+    const phone = phoneRef.current;
+    if (!phone) return;
+    phone.style.transition = 'transform 550ms cubic-bezier(0.16, 1, 0.3, 1)';
+    phone.style.transform =
+      'perspective(1200px) rotateY(-16deg) rotateX(7deg) rotateZ(-5deg) translate3d(0, 0, 0)';
+    phoneResetTimer.current = window.setTimeout(() => {
+      phone.style.transition = '';
+      phone.style.transform = '';
+      phone.classList.add('xena-phone-float');
+      phoneResetTimer.current = null;
+    }, 560);
+  };
+
   const featuredSymbols = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'META'];
   const featured = featuredSymbols
     .map((sym) => stocks.find((s) => s.symbol === sym))
@@ -263,16 +303,24 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Animated phone showing a real trading terminal */}
-          <div className="relative flex items-center justify-center py-8">
+          {/* Cursor-reactive animated phone showing a real trading terminal */}
+          <div
+            ref={phoneStageRef}
+            onMouseMove={(e) => applyPhoneTilt(e.clientX, e.clientY)}
+            onMouseLeave={resetPhoneTilt}
+            className="relative flex items-center justify-center py-8"
+          >
             <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl animate-ambient-breathe" />
 
-            <div className="xena-phone-float relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20">
-              <div className="overflow-hidden rounded-[2rem] bg-[#0A1624]">
+            <div
+              ref={phoneRef}
+              className="xena-phone-float relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20"
+            >
+              <div className="relative aspect-[1/2] w-full overflow-hidden rounded-[2rem] bg-[#0A1624]">
                 <img
                   src={phoneTerminalImg}
                   alt="Xena Broker trading terminal on a phone"
-                  className="h-[540px] w-full object-cover object-top sm:h-[580px]"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               </div>
             </div>
