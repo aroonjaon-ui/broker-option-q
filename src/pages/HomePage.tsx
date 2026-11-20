@@ -3,25 +3,23 @@ import {
   ArrowUpRight,
   BadgeCheck,
   BarChart3,
-  BatteryFull,
   CheckCircle2,
   CreditCard,
   Globe2,
   LineChart,
   Lock,
   ShieldCheck,
-  Signal,
   Sparkles,
   Star,
   Trophy,
   Wallet,
-  Wifi,
   Zap,
 } from 'lucide-react';
 import MiniSparkline from '../components/MiniSparkline';
 import fundingVaultImg from '../assets/images/home_funding_vault_1794692664965.jpg';
 import tradingDeskImg from '../assets/images/home_trading_desk_1794692664220.jpg';
 import portfolioStudioImg from '../assets/images/home_portfolio_studio_1794692664964.jpg';
+import phoneTerminalImg from '../assets/images/phone_trading_terminal.png';
 import { MarketIndex, OrderSide, PageId, Stock, UserAccount } from '../types/broker';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
@@ -265,32 +263,17 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Slanted phone showing a real trading interface image */}
+          {/* Animated phone showing a real trading terminal */}
           <div className="relative flex items-center justify-center py-8">
-            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl" />
+            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl animate-ambient-breathe" />
 
-            <div
-              className="relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20"
-              style={{
-                transform: 'perspective(1200px) rotateY(-16deg) rotateX(7deg) rotateZ(-5deg)',
-              }}
-            >
-              <div className="relative overflow-hidden rounded-[2rem] bg-[#0A1624]">
+            <div className="xena-phone-float relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20">
+              <div className="overflow-hidden rounded-[2rem] bg-[#0A1624]">
                 <img
-                  src={portfolioStudioImg}
-                  alt="Real trading interface on a phone"
+                  src={phoneTerminalImg}
+                  alt="Xena Broker trading terminal on a phone"
                   className="h-[540px] w-full object-cover object-top sm:h-[580px]"
                 />
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 pt-3 pb-6 text-[9px] font-semibold text-white">
-                  <span>9:41</span>
-                  <span className="absolute left-1/2 top-2 h-3.5 w-16 -translate-x-1/2 rounded-full bg-black" />
-                  <span className="flex items-center gap-1">
-                    <Signal className="h-2.5 w-2.5" />
-                    <Wifi className="h-2.5 w-2.5" />
-                    <BatteryFull className="h-3 w-3" />
-                  </span>
-                </div>
-                <div className="absolute inset-x-0 bottom-2 mx-auto h-1 w-24 rounded-full bg-white/60" />
               </div>
             </div>
           </div>

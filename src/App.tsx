@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ShieldAlert, Sparkles } from 'lucide-react';
 import TopNav from './components/TopNav';
+import BrandLogo from './components/BrandLogo';
 import SupportChat from './components/SupportChat';
 import WithdrawalToastFeed from './components/WithdrawalToastFeed';
 import PlatformModals, { AppModalKind } from './components/PlatformModals';
@@ -1629,10 +1630,8 @@ export default function App() {
       <footer className="border-t border-slate-800 bg-gradient-to-r from-[#070D19] via-[#0B1221] to-[#0F1E3D] text-slate-300 mt-auto">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs sm:text-sm">
           <div className="font-medium text-slate-200">
-            <span className="font-display font-bold text-white">
-              Xena <span className="text-blue-400">Broker</span>
-            </span>{' '}
-            <span aria-hidden="true" className="text-slate-500">·</span>{' '}
+            <BrandLogo size={28} dark />
+            <span aria-hidden="true" className="ml-3 text-slate-500">·</span>{' '}
             <span className="text-slate-400">US Equities Trading &amp; Portfolio Platform</span>
           </div>
           <div className="flex flex-wrap items-center gap-5 font-medium">

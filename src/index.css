@@ -476,3 +476,18 @@
   --modal-text-hover: #0F172A;
   --modal-wheel-bg: #F1F5F9;
 }
+
+/* Animated phone preview on the home page */
+@keyframes xena-phone-float {
+  0%, 100% { transform: perspective(1200px) rotateY(-16deg) rotateX(7deg) rotateZ(-5deg) translate3d(0, 0, 0); }
+  50% { transform: perspective(1200px) rotateY(-11deg) rotateX(4deg) rotateZ(-2deg) translate3d(0, -14px, 0); }
+}
+
+.xena-phone-float {
+  animation: xena-phone-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xena-phone-float { animation: none; }
+}

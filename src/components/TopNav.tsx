@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Globe2, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { AccountMode, PageId, UserAccount } from '../types/broker';
+import BrandLogo from './BrandLogo';
 
 interface TopNavProps {
   activePage: PageId;
@@ -66,12 +67,7 @@ export default function TopNav({
           onClick={() => handleNav('home')}
           className="flex items-center gap-2.5 shrink-0 cursor-pointer"
         >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#06182B] to-[#0B3A5C] font-display text-sm font-extrabold text-emerald-300">
-            X
-          </span>
-          <span className="font-display text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
-            Xena <span className="text-emerald-600">Broker</span>
-          </span>
+          <BrandLogo size={34} />
         </button>
 
         {/* Desktop nav */}
