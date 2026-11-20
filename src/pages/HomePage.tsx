@@ -5,20 +5,15 @@ import {
   BarChart3,
   BatteryFull,
   CheckCircle2,
-  ChevronDown,
   CreditCard,
   Globe2,
   LineChart,
-  ListOrdered,
   Lock,
-  PieChart,
-  Search,
   ShieldCheck,
   Signal,
   Sparkles,
   Star,
   Trophy,
-  User,
   Wallet,
   Wifi,
   Zap,
@@ -176,22 +171,6 @@ export default function HomePage({
     : 0;
   const previewPct = previewStock ? (previewChange / previewStock.previousClose) * 100 : 0;
 
-  // Build a larger chart for the phone trading interface.
-  const chartData = previewStock?.sparkline?.length
-    ? previewStock.sparkline
-    : [3, 5, 4, 7, 6, 9, 8, 11, 10, 13];
-  const chartMin = Math.min(...chartData);
-  const chartMax = Math.max(...chartData);
-  const chartRange = chartMax - chartMin || 1;
-  const chartPts = chartData.map((val, idx) => ({
-    x: (idx / (chartData.length - 1)) * 280,
-    y: 96 - 8 - ((val - chartMin) / chartRange) * 80,
-  }));
-  const chartLine = chartPts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const chartArea = `0,96 ${chartLine} 280,96`;
-  const chartColor = previewChange >= 0 ? '#10B981' : '#F43F5E';
-  const lastPoint = chartPts[chartPts.length - 1];
-
   const ticker = [
     ...indices.slice(0, 4).map((i) => ({
       key: i.id,
@@ -216,11 +195,11 @@ export default function HomePage({
           src={tradingDeskImg}
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-70"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100 brightness-110"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#06182B]/80 via-[#06182B]/65 to-[#06182B]/90"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#06182B]/75 via-[#06182B]/45 to-[#06182B]/70"
         />
         <div
           aria-hidden="true"
@@ -286,178 +265,32 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Realistic mobile trading interface */}
-          <div className="relative flex items-center justify-center py-4">
-            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/25 via-transparent to-sky-500/25 blur-3xl" />
+          {/* Slanted phone showing a real trading interface image */}
+          <div className="relative flex items-center justify-center py-8">
+            <div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-tr from-emerald-500/30 via-transparent to-sky-500/30 blur-3xl" />
 
-            <div className="relative w-[286px] sm:w-[318px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_35px_80px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/15">
-              <div className="overflow-hidden rounded-[2rem] bg-[#0A1624]">
-                {/* status bar */}
-                <div className="relative flex items-center justify-between px-4 pt-2.5 pb-1 text-[9px] font-semibold text-slate-300">
-                  <span className="w-16">9:41</span>
-                  <span className="absolute left-1/2 top-1.5 h-3.5 w-16 -translate-x-1/2 rounded-full bg-black" />
+            <div
+              className="relative w-[270px] sm:w-[310px] rounded-[2.6rem] border-[7px] border-[#040C14] bg-[#040C14] p-1 shadow-[0_45px_95px_-20px_rgba(0,0,0,0.95)] ring-1 ring-white/20"
+              style={{
+                transform: 'perspective(1200px) rotateY(-16deg) rotateX(7deg) rotateZ(-5deg)',
+              }}
+            >
+              <div className="relative overflow-hidden rounded-[2rem] bg-[#0A1624]">
+                <img
+                  src={portfolioStudioImg}
+                  alt="Real trading interface on a phone"
+                  className="h-[540px] w-full object-cover object-top sm:h-[580px]"
+                />
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 pt-3 pb-6 text-[9px] font-semibold text-white">
+                  <span>9:41</span>
+                  <span className="absolute left-1/2 top-2 h-3.5 w-16 -translate-x-1/2 rounded-full bg-black" />
                   <span className="flex items-center gap-1">
                     <Signal className="h-2.5 w-2.5" />
                     <Wifi className="h-2.5 w-2.5" />
                     <BatteryFull className="h-3 w-3" />
                   </span>
                 </div>
-
-                {/* app bar */}
-                <div className="flex items-center justify-between px-4 pb-2 pt-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-400 text-[10px] font-extrabold text-[#04231A]">
-                      X
-                    </span>
-                    <span className="text-[11px] font-bold text-white">Xena</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-white/[0.07] px-2 py-1 text-[9px] font-semibold text-white">
-                      {previewStock?.symbol ?? 'AAPL'}
-                      <ChevronDown className="h-2.5 w-2.5 text-slate-400" />
-                    </span>
-                    <Search className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                </div>
-
-                {/* price header */}
-                <div className="px-4">
-                  <p className="text-[9px] text-slate-400">
-                    {previewStock?.name ?? 'Apple Inc.'} · NASDAQ
-                  </p>
-                  <div className="mt-0.5 flex items-end gap-2">
-                    <span className="font-mono text-[26px] font-bold leading-none tabular-nums text-white">
-                      {formatCurrency(previewStock?.price ?? 0)}
-                    </span>
-                    <span
-                      className={`mb-0.5 font-mono text-[10px] font-semibold tabular-nums ${
-                        previewChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {previewChange >= 0 ? '+' : ''}
-                      {formatPercent(previewPct)}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[8px] text-slate-500">Today · USD</p>
-                </div>
-
-                {/* price chart */}
-                <div className="mt-2 px-2">
-                  <svg
-                    viewBox="0 0 280 96"
-                    preserveAspectRatio="none"
-                    className="h-[96px] w-full"
-                    aria-hidden="true"
-                  >
-                    <defs>
-                      <linearGradient id="phoneChartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={chartColor} stopOpacity="0.35" />
-                        <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {[24, 48, 72].map((y) => (
-                      <line
-                        key={y}
-                        x1="0"
-                        x2="280"
-                        y1={y}
-                        y2={y}
-                        stroke="rgba(255,255,255,0.07)"
-                        strokeWidth="1"
-                      />
-                    ))}
-                    <polygon points={chartArea} fill="url(#phoneChartGrad)" />
-                    <polyline
-                      points={chartLine}
-                      fill="none"
-                      stroke={chartColor}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    {lastPoint && (
-                      <circle
-                        cx={lastPoint.x}
-                        cy={lastPoint.y}
-                        r="3.5"
-                        fill={chartColor}
-                        stroke="#0A1624"
-                        strokeWidth="1.5"
-                      />
-                    )}
-                  </svg>
-                  <div className="flex justify-between px-1.5 text-[8px] text-slate-500">
-                    <span>09:30</span>
-                    <span>11:00</span>
-                    <span>12:30</span>
-                    <span>14:00</span>
-                    <span>16:00</span>
-                  </div>
-                </div>
-
-                {/* timeframe + sections */}
-                <div className="mt-1.5 flex justify-between px-4 text-[9px] font-semibold">
-                  {['1D', '1W', '1M', '3M', '1Y', 'ALL'].map((tf, i) => (
-                    <span key={tf} className={i === 1 ? 'text-emerald-400' : 'text-slate-500'}>
-                      {tf}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-2 flex gap-4 border-b border-white/10 px-4">
-                  {['Trade', 'Depth', 'Positions'].map((tab, i) => (
-                    <span
-                      key={tab}
-                      className={`-mb-px border-b-2 pb-1.5 text-[9px] font-semibold ${
-                        i === 0
-                          ? 'border-emerald-400 text-white'
-                          : 'border-transparent text-slate-500'
-                      }`}
-                    >
-                      {tab}
-                    </span>
-                  ))}
-                </div>
-
-                {/* order ticket */}
-                <div className="px-4 pb-3 pt-2.5">
-                  <div className="flex rounded-lg bg-white/[0.06] p-0.5 text-[9px] font-bold">
-                    <span className="flex-1 rounded-md bg-emerald-500 py-1.5 text-center text-[#04231A]">
-                      Buy
-                    </span>
-                    <span className="flex-1 py-1.5 text-center text-slate-400">Sell</span>
-                  </div>
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
-                      <span className="text-[9px] text-slate-400">Order type</span>
-                      <span className="text-[9px] font-semibold text-white">Market</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
-                      <span className="text-[9px] text-slate-400">Quantity</span>
-                      <span className="font-mono text-[10px] font-semibold text-white">10 shares</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
-                      <span className="text-[9px] text-slate-400">Est. total</span>
-                      <span className="font-mono text-[10px] font-semibold text-white">
-                        {formatCurrency((previewStock?.price ?? 0) * 10)}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onTradeSymbol(previewStock?.symbol ?? 'AAPL', 'buy')}
-                    className="mt-2.5 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-teal-400 py-2 text-[10px] font-bold text-[#04231A] transition-all hover:brightness-105 cursor-pointer"
-                  >
-                    Buy {previewStock?.symbol ?? 'AAPL'}
-                  </button>
-                </div>
-
-                {/* bottom tab bar */}
-                <div className="flex items-center justify-around border-t border-white/10 bg-[#081322] py-2">
-                  <LineChart className="h-3.5 w-3.5 text-emerald-400" />
-                  <PieChart className="h-3.5 w-3.5 text-slate-500" />
-                  <ListOrdered className="h-3.5 w-3.5 text-slate-500" />
-                  <User className="h-3.5 w-3.5 text-slate-500" />
-                </div>
+                <div className="absolute inset-x-0 bottom-2 mx-auto h-1 w-24 rounded-full bg-white/60" />
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 /* Xena Broker app shell service worker.
    Covers static assets only. Supabase/API and font requests are never cached. */
-const CACHE = 'xena-shell-v1';
+const CACHE = 'xena-shell-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {

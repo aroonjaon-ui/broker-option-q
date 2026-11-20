@@ -573,8 +573,9 @@ export default function App() {
     setModalQueue((prev) => prev.slice(1));
   }, []);
 
-  // Platform Overview is shown once on the first visit.
+  // Platform Overview is shown once per signed-in account (never to guests).
   useEffect(() => {
+    if (!user) return;
     const timer = window.setTimeout(() => {
       if (!hasSeenPlatformInfo()) {
         markPlatformInfoSeen();
@@ -583,7 +584,7 @@ export default function App() {
     }, 1100);
 
     return () => window.clearTimeout(timer);
-  }, [enqueueModals]);
+  }, [user, enqueueModals]);
 
   // The Daily Reward Draw is a member reward: it never appears for visitors who
   // are not signed in, and it waits until the profile step is finished.
@@ -850,7 +851,13 @@ export default function App() {
       // Redirect to CompleteProfile to collect missing profile information
       navigateTo('complete-profile');
 
-      markPlatformInfoSeen();
+      // Always show the welcome tour to brand-new accounts, even if this
+      // browser saw the platform overview at some point before signup.
+      try {
+        localStorage.removeItem(PLATFORM_INFO_SEEN_KEY);
+      } catch {
+        /* ignore */
+      }
       const postSignupModals: AppModalKind[] = ['signup_bonus'];
       enqueueModals(postSignupModals);
 

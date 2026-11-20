@@ -176,32 +176,32 @@ export default function NewsPage({ onNavigate }: NewsPageProps) {
 
       <div className="max-w-[1440px] mx-auto px-5 sm:px-8 lg:px-12 py-10 sm:py-14 space-y-8">
         {featured && (
-          <article className="group relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow)]">
+          <article className="group relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#06182B] shadow-[var(--shadow)]">
             <img
               src={featured.image}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-25 transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-cover opacity-90 brightness-110 transition-transform duration-500 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] via-[var(--card)]/90 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-transparent" />
             <div className="relative p-6 sm:p-9 max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                 <TrendingUp className="w-3 h-3" /> {featured.category} · Featured
               </span>
-              <h2 className="mt-4 font-display text-xl sm:text-3xl font-bold leading-snug text-[var(--foreground)]">
+              <h2 className="mt-4 font-display text-xl sm:text-3xl font-bold leading-snug text-white">
                 {featured.title}
               </h2>
-              <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-[var(--muted-foreground)]">
+              <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-slate-200">
                 {featured.summary}
               </p>
-              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--muted)]">
-                <span className="font-semibold text-[var(--foreground)]">{featured.source}</span>
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-300">
+                <span className="font-semibold text-white">{featured.source}</span>
                 <span className="inline-flex items-center gap-1">
                   <Clock3 className="w-3.5 h-3.5" /> {featured.time}
                 </span>
                 {featured.tickers.map((t) => (
                   <span
                     key={t}
-                    className="rounded-md border border-[var(--border)] px-2 py-0.5 font-mono font-semibold"
+                    className="rounded-md border border-white/25 px-2 py-0.5 font-mono font-semibold text-white"
                   >
                     {t}
                   </span>
@@ -221,7 +221,7 @@ export default function NewsPage({ onNavigate }: NewsPageProps) {
                 <img
                   src={item.image}
                   alt=""
-                  className="h-full w-full object-cover opacity-80 transition-transform duration-500 hover:scale-105"
+                  className="h-full w-full object-cover opacity-100 brightness-110 transition-transform duration-500 hover:scale-105"
                 />
                 <span className="absolute left-3 top-3 rounded-full bg-[#06182B]/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                   {item.category}
